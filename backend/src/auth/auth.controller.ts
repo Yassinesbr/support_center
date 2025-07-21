@@ -15,13 +15,21 @@ import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  // --- Registration (NEW) ---
   @Post('register')
   async register(@Body() dto: RegisterUserDto) {
     return this.authService.register(dto);
   }
 
-  // --- Profile (NEW) ---
+  @Post('login')
+  async login(@Body() body: { email: string; password: string }) {
+    const { email, password } = body;
+    const user = await this.authService.validateUser(email, password);
+    if (!user) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+    return this.authService.login(user);
+  }
+
   @UseGuards(JwtAuthGuard)
   @Get('me')
   async profile(@Request() req) {
