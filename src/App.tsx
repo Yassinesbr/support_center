@@ -20,6 +20,7 @@ import { ScrollToTop } from "./components/common/ScrollToTop";
 import Home from "./pages/Dashboard/Home";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import { Navigate } from "react-router";
+import Students from "./pages/Students/StudentsListPage";
 
 export default function App() {
   return (
@@ -33,6 +34,7 @@ export default function App() {
               <Route index path="/" element={<Home />} />
 
               {/* Others Page */}
+              <Route path="/students" element={<Students />} />
               <Route path="/profile" element={<UserProfiles />} />
               <Route path="/calendar" element={<Calendar />} />
               <Route path="/blank" element={<Blank />} />
