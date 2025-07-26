@@ -1,6 +1,7 @@
 interface AvatarProps {
-  src: string; // URL of the avatar image
+  src?: string; // URL of the avatar image (optional now)
   alt?: string; // Alt text for the avatar
+  name?: string; // Name to generate initials from
   size?: "xsmall" | "small" | "medium" | "large" | "xlarge" | "xxlarge"; // Avatar size
   status?: "online" | "offline" | "busy" | "none"; // Status indicator
 }
@@ -29,16 +30,36 @@ const statusColorClasses = {
   busy: "bg-warning-500",
 };
 
+const getInitials = (name?: string) => {
+  if (!name) return "";
+  const words = name.trim().split(" ");
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return (words[0][0] + words[1][0]).toUpperCase();
+};
+
 const Avatar: React.FC<AvatarProps> = ({
   src,
   alt = "User Avatar",
+  name,
   size = "medium",
   status = "none",
 }) => {
+  const initials = !src && name ? getInitials(name) : "";
+
   return (
-    <div className={`relative  rounded-full ${sizeClasses[size]}`}>
-      {/* Avatar Image */}
-      <img src={src} alt={alt} className="object-cover rounded-full" />
+    <div
+      className={`relative flex items-center justify-center bg-gray-100 text-gray-700 font-semibold rounded-full ${sizeClasses[size]}`}
+    >
+      {/* Avatar Image or Initials */}
+      {src ? (
+        <img
+          src={src}
+          alt={alt}
+          className="object-cover rounded-full w-full h-full"
+        />
+      ) : (
+        <span className="select-none">{initials}</span>
+      )}
 
       {/* Status Indicator */}
       {status !== "none" && (

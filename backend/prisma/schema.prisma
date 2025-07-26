@@ -14,13 +14,46 @@ enum Role {
 }
 
 model User {
-  id       String   @id @default(uuid())
-  name     String
-  email    String   @unique
-  password String
-  role     Role     @default(student)
-  student  Student?
-  teacher  Teacher?
+  id         String   @id @default(uuid())
+  name       String
+  email      String   @unique
+  password   String
+  role       Role     @default(student)
+  student    Student?
+  teacher    Teacher?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt @default(now())
+}
+
+model Student {
+  id             String   @id @default(uuid())
+  user           User     @relation(fields: [userId], references: [id])
+  userId         String   @unique
+
+  birthDate      DateTime?      
+  address        String?        
+  phone          String?        
+  parentName     String?        
+  parentPhone    String?        
+  enrollmentDate DateTime @default(now())
+  paymentStatus  String?        
+
+  classes        Class[]  @relation("ClassStudents")
+}
+
+model Teacher {
+  id            String    @id @default(uuid())
+  user          User      @relation(fields: [userId], references: [id])
+  userId        String    @unique
+
+  birthDate     DateTime?     
+  address       String?       
+  phone         String?       
+  hiringDate    DateTime @default(now())
+  subject       String?        
+  salary        Float?        
+
+  classes       Class[]   @relation("TeacherClasses")
 }
 
 model Class {
@@ -30,19 +63,5 @@ model Class {
   teacher     Teacher   @relation("TeacherClasses", fields: [teacherId], references: [id])
   teacherId   String
   students    Student[] @relation("ClassStudents")
+  createdAt   DateTime  @default(now())
 }
-
-model Student {
-  id         String    @id @default(uuid())
-  user       User      @relation(fields: [userId], references: [id])
-  userId     String    @unique
-  classes    Class[]   @relation("ClassStudents")
-}
-
-model Teacher {
-  id         String    @id @default(uuid())
-  user       User      @relation(fields: [userId], references: [id])
-  userId     String    @unique
-  classes    Class[]   @relation("TeacherClasses")
-}
-

@@ -117,6 +117,16 @@ export default function Avatars() {
             />
           </div>
         </ComponentCard>
+        <ComponentCard title="Avatar with name initials">
+          <div className="flex flex-col items-center justify-center gap-5 sm:flex-row">
+            <Avatar name="Yassine Essebbar" size="xsmall" />
+            <Avatar name="Yassine Essebbar" size="small" />
+            <Avatar name="Yassine Essebbar" size="medium" />
+            <Avatar name="Yassine Essebbar" size="large" />
+            <Avatar name="Yassine Essebbar" size="xlarge" />
+            <Avatar name="Yassine Essebbar" size="xxlarge" />
+          </div>
+        </ComponentCard>
       </div>
     </>
   );

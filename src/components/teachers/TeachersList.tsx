@@ -1,4 +1,3 @@
-import { useStudents } from "../../hooks/useStudents";
 import { useNavigate } from "react-router";
 import {
   Table,
@@ -8,19 +7,18 @@ import {
   TableRow,
 } from "../ui/table";
 import Avatar from "../ui/avatar/Avatar";
-import Badge from "../ui/badge/Badge";
+import { useTeachers } from "../../hooks/useTeachers";
 import Loader from "../Loader/Loader";
 
-interface Student {
+interface Teacher {
   id: string;
   userId: string;
   birthDate: string;
   address: string;
   phone: string;
-  parentName: string;
-  parentPhone: string;
-  enrollmentDate: string;
-  paymentStatus: string;
+  hiringDate: string;
+  subject: string;
+  salary: number;
   user: {
     id: string;
     name: string;
@@ -31,10 +29,10 @@ interface Student {
   };
 }
 
-export default function StudentsList() {
+export default function TeachersList() {
   const navigate = useNavigate();
-  const { data, isLoading, error } = useStudents();
-  const studentsList: Student[] = data ?? [];
+  const { data, isLoading, error } = useTeachers();
+  const teachersList: Teacher[] = data ?? [];
 
   if (isLoading)
     return (
@@ -42,8 +40,7 @@ export default function StudentsList() {
         <Loader />
       </div>
     );
-
-  if (error) return <div>Error loading students.</div>;
+  if (error) return <div>Error loading teachers.</div>;
 
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
@@ -55,7 +52,7 @@ export default function StudentsList() {
                 isHeader
                 className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
               >
-                Student
+                Teacher
               </TableCell>
               <TableCell
                 isHeader
@@ -73,69 +70,57 @@ export default function StudentsList() {
                 isHeader
                 className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
               >
-                Parent Name
+                Subject
               </TableCell>
               <TableCell
                 isHeader
                 className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
               >
-                Payment Status
+                Salary
               </TableCell>
               <TableCell
                 isHeader
                 className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
               >
-                Enrollment Date
+                Hiring Date
               </TableCell>
             </TableRow>
           </TableHeader>
           <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-            {studentsList.map((student) => (
+            {teachersList.map((teacher) => (
               <TableRow
-                key={student.id}
+                key={teacher.id}
                 className="hover:bg-gray-50 dark:hover:bg-white/[0.05] cursor-pointer"
-                onClick={() => navigate(`/students/${student.id}`)}
+                onClick={() => navigate(`/teachers/${teacher.id}`)}
               >
                 <TableCell className="px-5 py-4 sm:px-6 text-start">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 overflow-hidden rounded-full">
                       <Avatar
-                        alt={student.user.name}
-                        name={student.user.name}
+                        alt={teacher.user.name}
+                        name={teacher.user.name}
                         size="medium"
                       />
                     </div>
                     <span className="block font-medium text-gray-800 text-theme-sm dark:text-white/90">
-                      {student.user.name}
+                      {teacher.user.name}
                     </span>
                   </div>
                 </TableCell>
                 <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
-                  {student.user.email}
+                  {teacher.user.email}
                 </TableCell>
                 <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
-                  {student.phone}
+                  {teacher.phone}
                 </TableCell>
                 <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
-                  {student.parentName}
+                  {teacher.subject}
                 </TableCell>
                 <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
-                  <Badge
-                    variant="light"
-                    color={
-                      student.paymentStatus === "paid"
-                        ? "success"
-                        : student.paymentStatus === "partial"
-                        ? "warning"
-                        : "error"
-                    }
-                  >
-                    {student.paymentStatus.charAt(0).toUpperCase() +
-                      student.paymentStatus.slice(1)}
-                  </Badge>
+                  {teacher.salary} MAD
                 </TableCell>
                 <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
-                  {new Date(student.enrollmentDate).toLocaleDateString("en-GB")}
+                  {new Date(teacher.hiringDate).toLocaleDateString("en-GB")}
                 </TableCell>
               </TableRow>
             ))}

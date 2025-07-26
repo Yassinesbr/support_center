@@ -14,9 +14,12 @@ import {
   PlugInIcon,
   TableIcon,
   UserCircleIcon,
+  UserGraduateIcon,
 } from "../icons";
 import { useSidebar } from "../context/SidebarContext";
 import SidebarWidget from "./SidebarWidget";
+import ClassPort from "../assets/logo-full.png";
+import Logo from "../assets/logo.png";
 
 type NavItem = {
   name: string;
@@ -35,6 +38,11 @@ const navItems: NavItem[] = [
     icon: <UserCircleIcon />,
     name: "Students",
     path: "/students",
+  },
+  {
+    icon: <UserGraduateIcon />,
+    name: "Teachers",
+    path: "/teachers",
   },
   {
     icon: <CalenderIcon />,
@@ -305,7 +313,7 @@ const AppSidebar: React.FC = () => {
     >
       <div
         className={`py-8 flex ${
-          !isExpanded && !isHovered ? "lg:justify-center" : "justify-start"
+          !isExpanded && !isHovered ? "lg:justify-center" : "justify-center"
         }`}
       >
         <Link to="/">
@@ -313,26 +321,21 @@ const AppSidebar: React.FC = () => {
             <>
               <img
                 className="dark:hidden"
-                src="/images/logo/logo.svg"
+                src={ClassPort}
                 alt="Logo"
                 width={150}
                 height={40}
               />
               <img
                 className="hidden dark:block"
-                src="/images/logo/logo-dark.svg"
+                src={ClassPort}
                 alt="Logo"
                 width={150}
                 height={40}
               />
             </>
           ) : (
-            <img
-              src="/images/logo/logo-icon.svg"
-              alt="Logo"
-              width={32}
-              height={32}
-            />
+            <img src={Logo} alt="Logo" width={32} height={32} />
           )}
         </Link>
       </div>
