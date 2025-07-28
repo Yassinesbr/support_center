@@ -2,7 +2,14 @@ interface AvatarProps {
   src?: string; // URL of the avatar image (optional now)
   alt?: string; // Alt text for the avatar
   name?: string; // Name to generate initials from
-  size?: "xsmall" | "small" | "medium" | "large" | "xlarge" | "xxlarge"; // Avatar size
+  size?:
+    | "xsmall"
+    | "small"
+    | "medium"
+    | "large"
+    | "xlarge"
+    | "xxlarge"
+    | "xxxlarge"; // Size of the avatar
   status?: "online" | "offline" | "busy" | "none"; // Status indicator
 }
 
@@ -13,6 +20,7 @@ const sizeClasses = {
   large: "h-12 w-12 max-w-12",
   xlarge: "h-14 w-14 max-w-14",
   xxlarge: "h-16 w-16 max-w-16",
+  xxxlarge: "h-20 w-20 max-w-20",
 };
 
 const statusSizeClasses = {
@@ -22,6 +30,7 @@ const statusSizeClasses = {
   large: "h-3 w-3 max-w-3",
   xlarge: "h-3.5 w-3.5 max-w-3.5",
   xxlarge: "h-4 w-4 max-w-4",
+  xxxlarge: "h-5 w-5 max-w-5",
 };
 
 const statusColorClasses = {
