@@ -6,14 +6,17 @@ import Input from "../form/input/InputField";
 import Label from "../form/Label";
 import Avatar from "../ui/avatar/Avatar";
 import TextArea from "../form/input/TextArea";
+import { useUpdateStudent } from "../../hooks/useUpdateStudent";
 
 export default function UserMetaCard({
+  studentId,
   name,
   email,
   profilePicture,
   phoneNumber,
   profileAddress,
 }: {
+  studentId?: string;
   name: string;
   email: string;
   profilePicture?: string;
@@ -21,6 +24,7 @@ export default function UserMetaCard({
   profileAddress?: string;
 }) {
   const { isOpen, openModal, closeModal } = useModal();
+  const updateStudent = useUpdateStudent();
 
   // Split name into first and last name
   const [firstNameInit, ...lastNameArr] = name.split(" ");
@@ -40,15 +44,31 @@ export default function UserMetaCard({
     openModal();
   };
 
-  const handleSave = () => {
-    console.log("Saving changes...", {
-      firstName,
-      lastName,
-      userEmail,
-      phone,
-      address,
-    });
-    closeModal();
+  const handleSave = async (e?: React.FormEvent) => {
+    if (e) {
+      e.preventDefault();
+    }
+
+    if (!studentId) {
+      console.error("Student ID is required");
+      return;
+    }
+
+    try {
+      await updateStudent.mutateAsync({
+        id: studentId,
+        data: {
+          name: `${firstName} ${lastName}`,
+          email: userEmail,
+          phone,
+          address,
+        },
+      });
+      console.log("Student updated successfully");
+      closeModal();
+    } catch (error) {
+      console.error("Error updating student:", error);
+    }
   };
 
   return (
@@ -154,7 +174,7 @@ export default function UserMetaCard({
               Update your details to keep your profile up-to-date.
             </p>
           </div>
-          <form className="flex flex-col">
+          <form className="flex flex-col" onSubmit={handleSave}>
             <div className="custom-scrollbar h-[450px] overflow-y-auto px-2 pb-3">
               <div className="mt-7">
                 <h5 className="mb-5 text-lg font-medium text-gray-800 dark:text-white/90 lg:mb-6">
@@ -208,8 +228,12 @@ export default function UserMetaCard({
               <Button size="sm" variant="outline" onClick={closeModal}>
                 Close
               </Button>
-              <Button size="sm" onClick={handleSave}>
-                Save Changes
+              <Button
+                type="submit"
+                size="sm"
+                disabled={updateStudent.isPending}
+              >
+                {updateStudent.isPending ? "Saving..." : "Save Changes"}
               </Button>
             </div>
           </form>
