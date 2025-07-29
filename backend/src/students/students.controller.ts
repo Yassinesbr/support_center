@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Body, Param, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  UseGuards,
+  Put,
+} from '@nestjs/common';
 import { StudentsService } from './students.service';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
@@ -23,7 +31,22 @@ export class StudentsController {
 
   @Post()
   @Roles('admin')
-  create(@Body() body: { name: string; email: string; password: string }) {
+  create(
+    @Body()
+    body: {
+      firstName: string;
+      lastName: string;
+
+      email: string;
+      password: string;
+    },
+  ) {
     return this.studentsService.create(body);
+  }
+
+  @Put(':id')
+  @Roles('admin')
+  update(@Param('id') id: string, @Body() body: any) {
+    return this.studentsService.update(id, body);
   }
 }

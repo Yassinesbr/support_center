@@ -23,7 +23,15 @@ export class TeachersController {
 
   @Post()
   @Roles('admin')
-  create(@Body() body: { name: string; email: string; password: string }) {
+  create(
+    @Body()
+    body: {
+      firstName: string;
+      lastName: string;
+      email: string;
+      password: string;
+    },
+  ) {
     return this.teachersService.create(body);
   }
 }

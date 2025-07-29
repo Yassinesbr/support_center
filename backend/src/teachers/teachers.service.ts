@@ -16,11 +16,17 @@ export class TeachersService {
     });
   }
 
-  async create(data: { name: string; email: string; password: string }) {
+  async create(data: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    password: string;
+  }) {
     const hashed = await require('bcrypt').hash(data.password, 10);
     return this.prisma.user.create({
       data: {
-        name: data.name,
+        firstName: data.firstName,
+        lastName: data.lastName,
         email: data.email,
         password: hashed,
         role: 'teacher',

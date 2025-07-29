@@ -10,14 +10,16 @@ import { useUpdateStudent } from "../../hooks/useUpdateStudent";
 
 export default function UserMetaCard({
   studentId,
-  name,
+  firstName,
+  lastName,
   email,
   profilePicture,
   phoneNumber,
   profileAddress,
 }: {
   studentId?: string;
-  name: string;
+  firstName: string;
+  lastName: string;
   email: string;
   profilePicture?: string;
   phoneNumber?: string;
@@ -26,18 +28,15 @@ export default function UserMetaCard({
   const { isOpen, openModal, closeModal } = useModal();
   const updateStudent = useUpdateStudent();
 
-  // Split name into first and last name
-  const [firstNameInit, ...lastNameArr] = name.split(" ");
-  const lastNameInit = lastNameArr.join(" ");
-  const [firstName, setFirstName] = useState(firstNameInit);
-  const [lastName, setLastName] = useState(lastNameInit);
+  const [userFirstName, setUserFirstName] = useState(firstName);
+  const [userLastName, setUserLastName] = useState(lastName);
   const [userEmail, setUserEmail] = useState(email);
   const [phone, setPhone] = useState(phoneNumber);
   const [address, setAddress] = useState(profileAddress || "");
 
   const handleOpenModal = () => {
-    setFirstName(firstNameInit);
-    setLastName(lastNameInit);
+    setUserFirstName(firstName);
+    setUserLastName(lastName);
     setUserEmail(email || "");
     setPhone(phoneNumber || "");
     setAddress(profileAddress || "");
@@ -58,7 +57,8 @@ export default function UserMetaCard({
       await updateStudent.mutateAsync({
         id: studentId,
         data: {
-          name: `${firstName} ${lastName}`,
+          firstName: userFirstName,
+          lastName: userLastName,
           email: userEmail,
           phone,
           address,
@@ -79,14 +79,15 @@ export default function UserMetaCard({
             <div className="w-20 h-20 overflow-hidden border border-gray-200 rounded-full dark:border-gray-800">
               <Avatar
                 src={profilePicture}
-                alt={name}
-                name={name}
+                alt={`${firstName} ${lastName}`}
+                firstName={firstName}
+                lastName={lastName}
                 size="xxxlarge"
               />
             </div>
             <div className="order-3 xl:order-2">
               <h4 className="mb-2 text-lg font-semibold text-center text-gray-800 dark:text-white/90 xl:text-left">
-                {name}
+                {userFirstName} {userLastName}
               </h4>
               <div className="flex flex-col items-center gap-1 text-center xl:flex-row xl:gap-3 xl:text-left">
                 <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -185,16 +186,16 @@ export default function UserMetaCard({
                     <Label>First Name</Label>
                     <Input
                       type="text"
-                      value={firstName}
-                      onChange={(e) => setFirstName(e.target.value)}
+                      value={userFirstName}
+                      onChange={(e) => setUserFirstName(e.target.value)}
                     />
                   </div>
                   <div className="col-span-2 lg:col-span-1">
                     <Label>Last Name</Label>
                     <Input
                       type="text"
-                      value={lastName}
-                      onChange={(e) => setLastName(e.target.value)}
+                      value={userLastName}
+                      onChange={(e) => setUserLastName(e.target.value)}
                     />
                   </div>
                   <div className="col-span-2 lg:col-span-1">

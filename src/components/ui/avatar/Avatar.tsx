@@ -1,7 +1,8 @@
 interface AvatarProps {
   src?: string; // URL of the avatar image (optional now)
   alt?: string; // Alt text for the avatar
-  name?: string; // Name to generate initials from
+  firstName?: string; // First name for initials
+  lastName?: string; // Last name for initials
   size?:
     | "xsmall"
     | "small"
@@ -39,21 +40,22 @@ const statusColorClasses = {
   busy: "bg-warning-500",
 };
 
-const getInitials = (name?: string) => {
-  if (!name) return "";
-  const words = name.trim().split(" ");
-  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
-  return (words[0][0] + words[1][0]).toUpperCase();
+const getInitials = (firstName?: string, lastName?: string): string => {
+  if (!firstName && !lastName) return "";
+  const firstInitial = firstName ? firstName.charAt(0).toUpperCase() : "";
+  const lastInitial = lastName ? lastName.charAt(0).toUpperCase() : "";
+  return `${firstInitial}${lastInitial}`;
 };
 
 const Avatar: React.FC<AvatarProps> = ({
   src,
   alt = "User Avatar",
-  name,
+  firstName,
+  lastName,
   size = "medium",
   status = "none",
 }) => {
-  const initials = !src && name ? getInitials(name) : "";
+  const initials = getInitials(firstName, lastName);
 
   return (
     <div

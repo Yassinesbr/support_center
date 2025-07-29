@@ -30,14 +30,16 @@ export default function StudentProfilePage() {
         <div className="space-y-6">
           <UserMetaCard
             studentId={data.id}
-            name={data.user.name}
+            firstName={data.user.firstName}
+            lastName={data.user.lastName}
             email={data.user.email}
             profilePicture={data.user.image}
             phoneNumber={data.phone}
             profileAddress={data.address}
           />
           <UserInfoCard
-            name={data.name}
+            firstName={data.user.firstName}
+            lastName={data.user.lastName}
             email={data.email}
             birthDate={data.birthDate}
             phone={data.phone}

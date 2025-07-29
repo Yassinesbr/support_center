@@ -23,7 +23,8 @@ interface Student {
   paymentStatus: string;
   user: {
     id: string;
-    name: string;
+    firstName: string;
+    lastName: string;
     email: string;
     role: string;
     createdAt: string;
@@ -100,13 +101,14 @@ export default function StudentsList() {
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 overflow-hidden rounded-full">
                       <Avatar
-                        alt={student.user.name}
-                        name={student.user.name}
+                        alt={`${student.user.firstName} ${student.user.lastName}`}
+                        firstName={student.user.firstName}
+                        lastName={student.user.lastName}
                         size="medium"
                       />
                     </div>
                     <span className="block font-medium text-gray-800 text-theme-sm dark:text-white/90">
-                      {student.user.name}
+                      {student.user.firstName} {student.user.lastName}
                     </span>
                   </div>
                 </TableCell>

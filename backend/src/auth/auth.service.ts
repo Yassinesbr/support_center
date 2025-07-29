@@ -15,6 +15,10 @@ export class AuthService {
   ) {}
 
   async validateUser(email: string, pass: string) {
+    console.log('Validating user:', email, pass);
+    // generate a bcrypt hash for the password
+    const hashed = await bcrypt.hash(pass, 10);
+    console.log('Hashed password:', hashed);
     const user = await this.usersService.findByEmail(email);
     if (user && (await bcrypt.compare(pass, user.password))) {
       const { password, ...result } = user;
@@ -42,7 +46,8 @@ export class AuthService {
     // 3. Create user
     const user = await this.prisma.user.create({
       data: {
-        name: dto.name,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
         email: dto.email,
         password: hashed,
         role: dto.role as Role,
@@ -57,14 +62,26 @@ export class AuthService {
     }
 
     // 5. Return public info
-    return { id: user.id, name: user.name, email: user.email, role: user.role };
+    return {
+      id: user.id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      role: user.role,
+    };
   }
 
   // --- Profile (NEW) ---
   async getProfile(userId: string) {
     return this.prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, name: true, email: true, role: true },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        role: true,
+      },
     });
   }
 }
