@@ -21,7 +21,8 @@ interface Teacher {
   salary: number;
   user: {
     id: string;
-    name: string;
+    firstName: string;
+    lastName: string;
     email: string;
     role: string;
     createdAt: string;
@@ -97,13 +98,14 @@ export default function TeachersList() {
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 overflow-hidden rounded-full">
                       <Avatar
-                        alt={teacher.user.name}
-                        name={teacher.user.name}
+                        alt={`${teacher.user.firstName} ${teacher.user.lastName}`}
+                        firstName={teacher.user.firstName}
+                        lastName={teacher.user.lastName}
                         size="medium"
                       />
                     </div>
                     <span className="block font-medium text-gray-800 text-theme-sm dark:text-white/90">
-                      {teacher.user.name}
+                      {teacher.user.firstName} {teacher.user.lastName}
                     </span>
                   </div>
                 </TableCell>

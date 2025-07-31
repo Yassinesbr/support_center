@@ -36,7 +36,6 @@ export class StudentsController {
     body: {
       firstName: string;
       lastName: string;
-
       email: string;
       password: string;
     },
