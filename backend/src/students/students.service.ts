@@ -6,8 +6,23 @@ import { UpdateStudentDto } from './dto/update-student.dto';
 export class StudentsService {
   constructor(private prisma: PrismaService) {}
 
-  findAll() {
-    return this.prisma.student.findMany({ include: { user: true } });
+  findAll(search?: string) {
+    return this.prisma.student.findMany({
+      where: search
+        ? {
+            OR: [
+              {
+                user: { firstName: { contains: search, mode: 'insensitive' } },
+              },
+              { user: { lastName: { contains: search, mode: 'insensitive' } } },
+              { user: { email: { contains: search, mode: 'insensitive' } } },
+              { phone: { contains: search, mode: 'insensitive' } },
+              { parentName: { contains: search, mode: 'insensitive' } },
+            ],
+          }
+        : undefined,
+      include: { user: true },
+    });
   }
 
   findOne(id: string) {

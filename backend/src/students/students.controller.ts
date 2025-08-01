@@ -6,6 +6,7 @@ import {
   Param,
   UseGuards,
   Put,
+  Query,
 } from '@nestjs/common';
 import { StudentsService } from './students.service';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -19,8 +20,8 @@ export class StudentsController {
 
   @Get()
   @Roles('admin')
-  async findAll(): Promise<any> {
-    return await this.studentsService.findAll();
+  async findAll(@Query('search') search?: string): Promise<any> {
+    return await this.studentsService.findAll(search);
   }
 
   @Get(':id')

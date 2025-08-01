@@ -1,12 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
-import api from "../api/axios";
+import axios from "../api/axios";
 
-export function useStudents() {
+export function useStudents(search: string = "") {
   return useQuery({
-    queryKey: ["students"],
+    queryKey: ["students", search],
     queryFn: async () => {
-      const { data } = await api.get("/students");
-      return data;
+      const params = search ? { params: { search } } : {};
+      const res = await axios.get("/students", params);
+      return res.data;
     },
   });
 }
