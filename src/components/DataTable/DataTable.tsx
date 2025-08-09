@@ -1,184 +1,425 @@
-import { useState, useMemo } from "react";
-import Input from "../form/input/InputField";
-import Button from "../ui/button/Button";
-import Select from "../form/Select";
+import React, { useMemo } from "react";
+import { useNavigate } from "react-router"; // <-- Add this import
+import {
+  ChevronUpDownIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+} from "@heroicons/react/24/outline";
 
-export default function DataTable({
-  columns,
-  rows,
-  title = "",
-  actionButton = null,
-  entriesOptions = [
-    { value: "5", label: "5" },
-    { value: "10", label: "10" },
-    { value: "20", label: "20" },
-    { value: "50", label: "50" },
-  ],
-  initialEntries = 10,
-  emptyMessage = "No records found.",
-  searchPlaceholder = "Search…",
-  getRowKey = (row, i) => row.id ?? i,
-  onSearch,
-  onRowClick,
+/** ========== Types ========== */
+export type SortDir = "asc" | "desc" | null;
+
+export type ColumnDef<T> = {
+  header: string | React.ReactNode;
+  accessorKey?: keyof T | string; // string allows nested "teacher.user.firstName"
+  cell?: (ctx: { row: T; value: any; rowIndex: number }) => React.ReactNode;
+  width?: string; // e.g. "w-48", "min-w-[180px]"
+  align?: "left" | "center" | "right";
+  enableSort?: boolean;
+};
+
+export type DataTableToolbarRender =
+  | React.ReactNode
+  | ((info: { selectedCount: number }) => React.ReactNode);
+
+type PaginationState = {
+  page: number; // 1-based
+  pageSize: number;
+  total?: number; // only needed for serverMode
+};
+
+type SortState = {
+  sortBy?: string | null; // accessorKey
+  sortDir?: SortDir;
+};
+
+type Props<T> = {
+  data: T[];
+  columns: ColumnDef<T>[];
+
+  /** Visual */
+  loading?: boolean;
+  density?: "comfortable" | "compact";
+  className?: string;
+
+  /** Behaviors */
+  serverMode?: boolean; // when true, client won’t sort/paginate
+  selectableRows?: boolean;
+  rowKey?: (row: T, i: number) => string;
+  rowLink?: (row: T) => string | void;
+  onRowClick?: (row: T) => void;
+
+  /** Sorting */
+  sort?: SortState;
+  onSortChange?: (sort: SortState) => void;
+
+  /** Pagination */
+  pagination?: PaginationState;
+  onPageChange?: (page: number) => void;
+  onPageSizeChange?: (size: number) => void;
+
+  /** Toolbars */
+  toolbarLeft?: DataTableToolbarRender;
+  toolbarRight?: DataTableToolbarRender;
+
+  /** Empty */
+  emptyTitle?: string;
+  emptySubtitle?: string;
+};
+
+/** ========== Helpers ========== */
+const cx = (...classes: (string | false | null | undefined)[]) =>
+  classes.filter(Boolean).join(" ");
+
+const getNested = (obj: any, path?: string | number) => {
+  if (path == null) return undefined;
+  if (typeof path === "number") return obj?.[path];
+  return path
+    .split(".")
+    .reduce((acc, key) => (acc ? acc[key] : undefined), obj);
+};
+
+function DefaultEmpty({
+  title = "No data",
+  subtitle = "There’s nothing to show yet.",
 }) {
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
-  const [entries, setEntries] = useState(initialEntries);
+  return (
+    <div className="flex flex-col items-center justify-center py-16 text-center">
+      <div className="text-base font-semibold">{title}</div>
+      <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+        {subtitle}
+      </div>
+    </div>
+  );
+}
 
-  // Filtering logic (can be overridden)
-  const filteredRows = useMemo(() => {
-    let r = rows;
-    if (search && search.length > 0) {
-      r = r.filter((row) =>
-        Object.values(row)
-          .join(" ")
-          .toLowerCase()
-          .includes(search.toLowerCase())
-      );
-    }
-    return r;
-  }, [search, rows]);
+function SkeletonRow({
+  cols,
+  density = "comfortable",
+}: {
+  cols: number;
+  density?: "comfortable" | "compact";
+}) {
+  return (
+    <tr className="animate-pulse">
+      {Array.from({ length: cols }).map((_, i) => (
+        <td
+          key={i}
+          className={cx(
+            "px-4",
+            density === "compact" ? "py-2.5" : "py-3.5",
+            "border-b border-gray-100 dark:border-gray-800"
+          )}
+        >
+          <div className="h-3 w-3/4 rounded bg-gray-200 dark:bg-gray-800" />
+        </td>
+      ))}
+    </tr>
+  );
+}
 
-  const total = filteredRows.length;
-  const totalPages = Math.max(1, Math.ceil(total / entries));
-  const pagedRows = filteredRows.slice((page - 1) * entries, page * entries);
+/** ========== Table ========== */
+export default function DataTable<T>({
+  data,
+  columns,
 
-  const goToPage = (newPage) => {
-    if (newPage < 1 || newPage > totalPages) return;
-    setPage(newPage);
+  loading = false,
+  density = "comfortable",
+  className,
+
+  serverMode = false,
+  selectableRows = false,
+  rowKey,
+  rowLink,
+  onRowClick,
+
+  sort,
+  onSortChange,
+
+  pagination,
+  onPageChange,
+  onPageSizeChange,
+
+  toolbarLeft,
+  toolbarRight,
+
+  emptyTitle,
+  emptySubtitle,
+}: Props<T>) {
+  /** derived sorting (client mode only) */
+  const sortedData = useMemo(() => {
+    if (serverMode || !sort?.sortBy || !sort?.sortDir) return data;
+
+    const col = columns.find((c) => (c.accessorKey as string) === sort.sortBy);
+    if (!col) return data;
+
+    const copy = [...data];
+    copy.sort((a: any, b: any) => {
+      const av = getNested(a, col.accessorKey as string);
+      const bv = getNested(b, col.accessorKey as string);
+      if (av == null && bv == null) return 0;
+      if (av == null) return sort.sortDir === "asc" ? -1 : 1;
+      if (bv == null) return sort.sortDir === "asc" ? 1 : -1;
+      if (typeof av === "number" && typeof bv === "number") {
+        return sort.sortDir === "asc" ? av - bv : bv - av;
+      }
+      const as = String(av).toLowerCase();
+      const bs = String(bv).toLowerCase();
+      if (as < bs) return sort.sortDir === "asc" ? -1 : 1;
+      if (as > bs) return sort.sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+    return copy;
+  }, [columns, data, serverMode, sort?.sortBy, sort?.sortDir]);
+
+  /** derived pagination (client mode only) */
+  const pagedData = useMemo(() => {
+    if (serverMode || !pagination?.page || !pagination?.pageSize)
+      return sortedData;
+    const start = (pagination.page - 1) * pagination.pageSize;
+    const end = start + pagination.pageSize;
+    return sortedData.slice(start, end);
+  }, [serverMode, sortedData, pagination?.page, pagination?.pageSize]);
+
+  const total = serverMode ? pagination?.total ?? 0 : sortedData.length;
+  const pageCount = pagination?.pageSize
+    ? Math.max(1, Math.ceil(total / pagination.pageSize))
+    : 1;
+
+  const paddingCell = density === "compact" ? "py-2.5" : "py-6";
+
+  const handleSortClick = (col: ColumnDef<T>) => {
+    if (!onSortChange || !col.enableSort || !col.accessorKey) return;
+    const isActive = sort?.sortBy === col.accessorKey;
+    const nextDir: SortDir = !isActive
+      ? "asc"
+      : sort?.sortDir === "asc"
+      ? "desc"
+      : sort?.sortDir === "desc"
+      ? null
+      : "asc";
+    onSortChange({
+      sortBy: nextDir ? (col.accessorKey as string) : null,
+      sortDir: nextDir,
+    });
   };
 
-  // Reset page when entries or search changes
-  // You can add useEffect if you want stricter page reset
+  const renderToolbar = (
+    render?: DataTableToolbarRender,
+    selectedCount = 0
+  ) => {
+    if (!render) return null;
+    return typeof render === "function" ? render({ selectedCount }) : render;
+  };
+
+  const rows = serverMode ? data : pagedData;
+
+  const navigate = useNavigate(); // <-- Add this line
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-md p-6 max-w-full mx-auto">
+    <div
+      className={cx(
+        "w-full rounded-xl border border-gray-200/60 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm",
+        className
+      )}
+    >
       {/* Toolbar */}
-      {(title || actionButton) && (
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-6">
-          {title && (
-            <h2 className="text-xl font-bold text-gray-800 dark:text-white">
-              {title}
-            </h2>
-          )}
-          {actionButton}
+      {(toolbarLeft || toolbarRight) && (
+        <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-100 dark:border-gray-800">
+          <div className="flex items-center gap-2">
+            {renderToolbar(toolbarLeft)}
+          </div>
+          <div className="flex items-center gap-2">
+            {renderToolbar(toolbarRight)}
+          </div>
         </div>
       )}
 
-      {/* Search & Entries */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mb-4">
-        <div className="flex items-center gap-3">
-          <label className="text-sm text-gray-500 dark:text-gray-400">
-            Show
-          </label>
-          <Select
-            options={entriesOptions}
-            value={entries.toString()}
-            onChange={(val) => {
-              setEntries(Number(val));
-              setPage(1);
-            }}
-            className="w-16 inline-block"
-            menuPosition="fixed"
-          />
-          <label className="text-sm text-gray-500 dark:text-gray-400">
-            entries
-          </label>
-        </div>
-        <Input
-          type="text"
-          className="w-full sm:w-64"
-          placeholder={searchPlaceholder}
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
-            setPage(1);
-            onSearch && onSearch(e.target.value);
-          }}
-        />
-      </div>
-
-      {/* Table */}
-      <div className="overflow-x-auto rounded-lg">
-        <table className="min-w-full text-sm bg-white dark:bg-gray-900">
-          <thead>
-            <tr className="border-b border-gray-100 dark:border-gray-800 text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800">
-              {columns.map((col) => (
-                <th key={col.key} className="py-3 px-4 text-left font-semibold">
-                  {col.label}
-                </th>
-              ))}
+      <div className="overflow-x-auto">
+        <table className="min-w-full text-sm">
+          {/* Head */}
+          <thead className="bg-gray-50/60 dark:bg-gray-800/40 text-gray-700 dark:text-gray-200">
+            <tr>
+              {selectableRows && <th className="w-10 px-4 py-3"></th>}
+              {columns.map((col, i) => {
+                const isActive = sort?.sortBy === col.accessorKey;
+                const showSort = col.enableSort && col.accessorKey;
+                return (
+                  <th
+                    key={i}
+                    scope="col"
+                    className={cx(
+                      "px-4 py-3 text-left font-semibold whitespace-nowrap",
+                      col.width,
+                      col.align === "right" && "text-right",
+                      col.align === "center" && "text-center",
+                      showSort && "cursor-pointer select-none"
+                    )}
+                    onClick={() => showSort && handleSortClick(col)}
+                    aria-sort={
+                      isActive
+                        ? sort?.sortDir === "asc"
+                          ? "ascending"
+                          : sort?.sortDir === "desc"
+                          ? "descending"
+                          : "none"
+                        : "none"
+                    }
+                  >
+                    <div className="inline-flex items-center gap-1.5">
+                      {col.header}
+                      {showSort && (
+                        <ChevronUpDownIcon
+                          className={cx(
+                            "h-4 w-4 transition",
+                            isActive ? "opacity-100" : "opacity-40"
+                          )}
+                        />
+                      )}
+                    </div>
+                  </th>
+                );
+              })}
+              <th className="w-12 px-4 py-3 text-right"> </th>
             </tr>
           </thead>
-          <tbody>
-            {pagedRows.length === 0 ? (
+
+          {/* Body */}
+          <tbody className="text-gray-800 dark:text-gray-100">
+            {loading ? (
+              <>
+                <SkeletonRow
+                  cols={columns.length + 1 + (selectableRows ? 1 : 0)}
+                  density={density}
+                />
+                <SkeletonRow
+                  cols={columns.length + 1 + (selectableRows ? 1 : 0)}
+                  density={density}
+                />
+                <SkeletonRow
+                  cols={columns.length + 1 + (selectableRows ? 1 : 0)}
+                  density={density}
+                />
+              </>
+            ) : rows.length === 0 ? (
               <tr>
                 <td
-                  colSpan={columns.length}
-                  className="py-8 text-center text-gray-400"
+                  colSpan={columns.length + 1 + (selectableRows ? 1 : 0)}
+                  className="px-4"
                 >
-                  {emptyMessage}
+                  <DefaultEmpty title={emptyTitle} subtitle={emptySubtitle} />
                 </td>
               </tr>
             ) : (
-              pagedRows.map((row, i) => (
-                <tr
-                  key={getRowKey(row, i)}
-                  className="border-b last:border-b-0 border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
-                  onClick={onRowClick ? () => onRowClick(row) : undefined}
-                >
-                  {columns.map((col) => (
-                    <td className="py-4 px-4" key={col.key}>
-                      {col.render
-                        ? col.render(row[col.key], row)
-                        : row[col.key]}
-                    </td>
-                  ))}
-                </tr>
-              ))
+              rows.map((row, rowIndex) => {
+                const key = rowKey ? rowKey(row, rowIndex) : String(rowIndex);
+                const link = rowLink?.(row as T);
+                const clickable = !!link || !!onRowClick;
+                const handleRow = () => {
+                  if (link) {
+                    navigate(link); // <-- Use client-side navigation
+                    return;
+                  }
+                  onRowClick?.(row as T);
+                };
+                return (
+                  <tr
+                    key={key}
+                    className={cx(
+                      "border-b border-gray-100 dark:border-gray-800",
+                      clickable &&
+                        "hover:bg-gray-50/60 dark:hover:bg-gray-800/50 cursor-pointer"
+                    )}
+                    onClick={clickable ? handleRow : undefined}
+                  >
+                    {selectableRows && (
+                      <td className={cx("px-4", paddingCell)}>
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 rounded border-gray-300 dark:border-gray-700"
+                        />
+                      </td>
+                    )}
+                    {columns.map((col, colIndex) => {
+                      const value = col.accessorKey
+                        ? getNested(row, col.accessorKey as string)
+                        : undefined;
+                      return (
+                        <td
+                          key={colIndex}
+                          className={cx(
+                            "px-4 whitespace-nowrap",
+                            paddingCell,
+                            col.align === "right" && "text-right",
+                            col.align === "center" && "text-center"
+                          )}
+                        >
+                          {col.cell
+                            ? col.cell({ row: row as T, value, rowIndex })
+                            : value ?? "-"}
+                        </td>
+                      );
+                    })}
+                    {/* actions slot (right aligned blank cell by default). Pass actions via a column if needed */}
+                    <td className={cx("px-4 text-right", paddingCell)} />
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
       </div>
 
-      {/* Pagination */}
-      <div className="flex flex-col md:flex-row justify-between items-center mt-6 gap-2">
-        <span className="text-sm text-gray-500 dark:text-gray-400">
-          Showing {total === 0 ? 0 : (page - 1) * entries + 1} to{" "}
-          {Math.min(page * entries, total)} of {total} entries
-        </span>
-        <div className="flex gap-1">
-          <Button
-            className="px-2 py-1 rounded text-xs"
-            onClick={() => goToPage(page - 1)}
-            disabled={page === 1}
-            size="sm"
-            variant="outline"
-          >
-            &larr;
-          </Button>
-          {Array.from({ length: totalPages }, (_, i) => (
-            <Button
-              key={i + 1}
-              className="px-2 py-1 rounded text-xs"
-              variant={page === i + 1 ? "primary" : "outline"}
-              onClick={() => goToPage(i + 1)}
-              size="sm"
+      {/* Footer / Pagination */}
+      {pagination && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-gray-100 dark:border-gray-800">
+          <div className="text-xs text-gray-600 dark:text-gray-400">
+            {total
+              ? `Showing ${Math.min(
+                  (pagination.page - 1) * pagination.pageSize + 1,
+                  total
+                )}–${Math.min(
+                  pagination.page * pagination.pageSize,
+                  total
+                )} of ${total}`
+              : `Page ${pagination.page}`}
+          </div>
+          <div className="flex items-center gap-2">
+            <select
+              className="rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1 text-sm"
+              value={pagination.pageSize}
+              onChange={(e) => onPageSizeChange?.(Number(e.target.value))}
             >
-              {i + 1}
-            </Button>
-          ))}
-          <Button
-            className="px-2 py-1 rounded text-xs"
-            onClick={() => goToPage(page + 1)}
-            disabled={page === totalPages}
-            size="sm"
-            variant="outline"
-          >
-            &rarr;
-          </Button>
+              {[10, 20, 50, 100].map((s) => (
+                <option key={s} value={s}>
+                  {s} / page
+                </option>
+              ))}
+            </select>
+            <div className="inline-flex items-center gap-1">
+              <button
+                className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-sm disabled:opacity-50"
+                onClick={() =>
+                  onPageChange?.(Math.max(1, (pagination.page ?? 1) - 1))
+                }
+                disabled={(pagination.page ?? 1) <= 1}
+              >
+                <ChevronLeftIcon className="h-4 w-4" /> Prev
+              </button>
+              <span className="px-2 text-sm">
+                {pagination.page} / {pageCount}
+              </span>
+              <button
+                className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-sm disabled:opacity-50"
+                onClick={() => onPageChange?.((pagination.page ?? 1) + 1)}
+                disabled={(pagination.page ?? 1) >= pageCount}
+              >
+                Next <ChevronRightIcon className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

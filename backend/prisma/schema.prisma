@@ -65,5 +65,7 @@ model Class {
   teacher     Teacher   @relation("TeacherClasses", fields: [teacherId], references: [id])
   teacherId   String
   students    Student[] @relation("ClassStudents")
+  startAt     DateTime?
+  endAt       DateTime?
   createdAt   DateTime  @default(now())
 }

@@ -25,6 +25,8 @@ import StudentProfilePage from "./pages/StudentProfile/StudentProfilePage";
 import IconsGallery from "./pages/Icons";
 import Teachers from "./pages/Teachers/TeachersListPage";
 import TeacherProfilePage from "./pages/TeacherProfilePage/TeacherProfilePage";
+import ClassesListPage from "./pages/Classes/ClassesListPage";
+import ClassDetailsPage from "./pages/Classes/ClassDetailsPage";
 
 export default function App() {
   return (
@@ -50,6 +52,9 @@ export default function App() {
                 path="/teachers/:teacherId"
                 element={<TeacherProfilePage />}
               />
+
+              <Route path="/classes" element={<ClassesListPage />} />
+              <Route path="/classes/:classId" element={<ClassDetailsPage />} />
 
               <Route path="/profile" element={<UserProfiles />} />
               <Route path="/calendar" element={<Calendar />} />

@@ -1,4 +1,9 @@
-import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsDateString,
+} from 'class-validator';
 
 export class CreateClassDto {
   @IsNotEmpty()
@@ -12,4 +17,12 @@ export class CreateClassDto {
   @IsNotEmpty()
   @IsString()
   teacherId: string;
+
+  @IsNotEmpty()
+  @IsDateString()
+  startAt: string; // ISO string
+
+  @IsNotEmpty()
+  @IsDateString()
+  endAt: string; // ISO string
 }

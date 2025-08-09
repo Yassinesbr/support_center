@@ -12,11 +12,11 @@ export class ClassesService {
         teacher: { include: { user: true } },
         students: { include: { user: true } },
       },
+      orderBy: { startAt: 'asc' },
     });
   }
 
   async create(data: CreateClassDto) {
-    // Check that the teacher exists
     const teacher = await this.prisma.teacher.findUnique({
       where: { id: data.teacherId },
     });
@@ -27,6 +27,8 @@ export class ClassesService {
         name: data.name,
         description: data.description,
         teacherId: data.teacherId,
+        startAt: new Date(data.startAt),
+        endAt: new Date(data.endAt),
       },
       include: {
         teacher: { include: { user: true } },
