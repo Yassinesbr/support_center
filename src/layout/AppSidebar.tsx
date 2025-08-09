@@ -6,6 +6,7 @@ import {
   BoxCubeIcon,
   CalenderIcon,
   ChevronDownIcon,
+  ClassIcon,
   GridIcon,
   HorizontaLDots,
   ListIcon,
@@ -45,7 +46,7 @@ const navItems: NavItem[] = [
     path: "/teachers",
   },
   {
-    icon: <UserGraduateIcon />,
+    icon: <ClassIcon />,
     name: "Classes",
     path: "/classes",
   },

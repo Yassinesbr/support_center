@@ -1,13 +1,35 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+// src/teachers/teachers.service.ts
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from 'src/prisma.service';
-import { UpdateTeacherDto } from './dto/update-teacher.dto';
+import * as bcrypt from 'bcrypt';
+import { randomBytes } from 'crypto';
+// import { UpdateTeacherDto } from './dto/update-teacher.dto'; // uncomment if you have it
 
 @Injectable()
 export class TeachersService {
   constructor(private prisma: PrismaService) {}
 
-  findAll() {
-    return this.prisma.teacher.findMany({ include: { user: true } });
+  findAll(search?: string) {
+    return this.prisma.teacher.findMany({
+      where: search
+        ? {
+            OR: [
+              {
+                user: { firstName: { contains: search, mode: 'insensitive' } },
+              },
+              { user: { lastName: { contains: search, mode: 'insensitive' } } },
+              { user: { email: { contains: search, mode: 'insensitive' } } },
+              { phone: { contains: search, mode: 'insensitive' } },
+              { subject: { contains: search, mode: 'insensitive' } }, // rename to speciality if needed
+            ],
+          }
+        : undefined,
+      include: { user: true },
+    });
   }
 
   findOne(id: string) {
@@ -17,67 +39,99 @@ export class TeachersService {
     });
   }
 
-  async create(data: {
-    firstName: string;
-    lastName: string;
-    email: string;
-    password: string;
-  }) {
-    const hashed = await require('bcrypt').hash(data.password, 10);
-    return this.prisma.user.create({
+  /**
+   * Supports BOTH payload shapes:
+   * 1) { firstName, lastName, email, password? }
+   * 2) {
+   *      user: { firstName, lastName, email, password? },
+   *      birthDate?, address?, phone?, hiringDate?, subject?
+   *    }
+   *
+   * If password missing, generates a strong temp one and returns it as __tempPassword.
+   */
+  async create(input: any) {
+    // Normalize (accept flat or nested user)
+    const hasNestedUser = !!input?.user;
+    const userInput = hasNestedUser ? input.user : input;
+    const teacherInput = hasNestedUser ? { ...input, user: undefined } : {};
+
+    if (!userInput?.email) {
+      throw new BadRequestException('Email is required');
+    }
+
+    const plainPassword =
+      userInput?.password && String(userInput.password).trim().length > 0
+        ? String(userInput.password)
+        : randomBytes(16).toString('base64url');
+
+    const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS || 10);
+    const hashed = await bcrypt.hash(plainPassword, saltRounds);
+
+    // Optional teacher fields
+    const teacherCreateData: any = {};
+    if (teacherInput.birthDate)
+      teacherCreateData.birthDate = new Date(teacherInput.birthDate);
+    if (teacherInput.address !== undefined)
+      teacherCreateData.address = teacherInput.address ?? null;
+    if (teacherInput.phone !== undefined)
+      teacherCreateData.phone = teacherInput.phone ?? null;
+    if (teacherInput.hiringDate)
+      teacherCreateData.hiringDate = new Date(teacherInput.hiringDate);
+    if (teacherInput.subject !== undefined)
+      teacherCreateData.subject = teacherInput.subject ?? null; // rename if 'speciality'
+
+    const created = await this.prisma.user.create({
       data: {
-        firstName: data.firstName,
-        lastName: data.lastName,
-        email: data.email,
+        firstName: userInput.firstName ?? '',
+        lastName: userInput.lastName ?? '',
+        email: userInput.email,
         password: hashed,
         role: 'teacher',
-        teacher: { create: {} },
+        teacher: { create: teacherCreateData },
       },
       include: { teacher: true },
     });
+
+    return {
+      ...created,
+      __tempPassword: userInput?.password ? undefined : plainPassword,
+    };
   }
 
-  async update(id: string, updateData: UpdateTeacherDto) {
-    console.log('Updating teacher with ID:', id);
-    // Check if teacher exists
+  // If you have UpdateTeacherDto, keep this; otherwise remove or adapt.
+  async update(id: string, updateData: any /* UpdateTeacherDto */) {
     const teacher = await this.prisma.teacher.findUnique({
       where: { id },
       include: { user: true },
     });
+    if (!teacher) throw new NotFoundException('Teacher not found');
 
-    if (!teacher) {
-      throw new NotFoundException('Teacher not found');
-    }
+    // Separate user fields from teacher fields
+    const { email, firstName, lastName, ...teacherFields } = updateData;
 
-    // Separate user data from teacher data
-    const { email, firstName, lastName, salary, ...teacherData } = updateData;
-    // Update user data if provided
-    const userUpdateData: any = {};
-    if (email) userUpdateData.email = email;
-    if (firstName) userUpdateData.firstName = firstName;
-    if (lastName) userUpdateData.lastName = lastName;
+    const userUpdate: any = {};
+    if (email !== undefined) userUpdate.email = email;
+    if (firstName !== undefined) userUpdate.firstName = firstName;
+    if (lastName !== undefined) userUpdate.lastName = lastName;
 
-    // Convert salary to number if present and not undefined/null
-    let parsedSalary: number | null | undefined = undefined;
-    if (salary !== undefined) {
-      parsedSalary = salary === null ? null : Number(salary);
-      if (salary !== null && parsedSalary !== null && isNaN(parsedSalary)) {
-        throw new Error('Invalid salary value');
-      }
-    }
+    // Normalize date-like fields if present
+    const teacherUpdate: any = { ...teacherFields };
+    if (teacherUpdate.hiringDate)
+      teacherUpdate.hiringDate = new Date(teacherUpdate.hiringDate);
+    if (teacherUpdate.birthDate)
+      teacherUpdate.birthDate = new Date(teacherUpdate.birthDate);
 
-    // Update teacher record
-    const updatedTeacher = await this.prisma.teacher.update({
+    const updated = await this.prisma.teacher.update({
       where: { id },
       data: {
-        user: {
-          update: userUpdateData,
-        },
-        ...teacherData,
+        ...teacherUpdate,
+        ...(Object.keys(userUpdate).length > 0 && {
+          user: { update: userUpdate },
+        }),
       },
       include: { user: true },
     });
 
-    return updatedTeacher;
+    return updated;
   }
 }

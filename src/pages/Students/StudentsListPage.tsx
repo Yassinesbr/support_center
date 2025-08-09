@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import api from "../../api/axios";
 import DataTable, { ColumnDef } from "../../components/DataTable/DataTable";
 import AddStudentModal from "./AddStudentModal";
+import Button from "../../components/ui/button/Button";
 
 type User = { firstName?: string; lastName?: string; email: string };
 type StudentRow = {
@@ -108,38 +109,37 @@ export default function StudentsListPage() {
     <>
       <div className="mb-3 flex items-center justify-between">
         <h1 className="text-xl font-semibold">Students</h1>
-        <button
+        <Button
           onClick={() => setAddOpen(true)}
-          className="rounded-lg bg-brand-600 text-white px-3 py-2 text-sm shadow hover:brightness-95"
+          className="bg-brand-500 text-white hover:bg-brand-600"
+          size="md"
         >
-          + Add Student
-        </button>
+          Add Student
+        </Button>
       </div>
 
-      <div className="">
-        <DataTable<StudentRow>
-          data={rows}
-          columns={columns}
-          loading={loading}
-          serverMode
-          sort={{ sortBy, sortDir }}
-          onSortChange={({ sortBy, sortDir }) => {
-            setSortBy(sortBy ?? null);
-            setSortDir(sortDir);
-            setPage(1);
-          }}
-          pagination={{ page, pageSize, total }}
-          onPageChange={setPage}
-          onPageSizeChange={(s) => {
-            setPageSize(s);
-            setPage(1);
-          }}
-          emptyTitle="No students yet"
-          emptySubtitle="Click “Add Student” to create one."
-          rowKey={(r) => r.id}
-          rowLink={(r) => `/students/${r.id}`}
-        />
-      </div>
+      <DataTable<StudentRow>
+        data={rows}
+        columns={columns}
+        loading={loading}
+        serverMode
+        sort={{ sortBy, sortDir }}
+        onSortChange={({ sortBy, sortDir }) => {
+          setSortBy(sortBy ?? null);
+          setSortDir(sortDir);
+          setPage(1);
+        }}
+        pagination={{ page, pageSize, total }}
+        onPageChange={setPage}
+        onPageSizeChange={(s) => {
+          setPageSize(s);
+          setPage(1);
+        }}
+        emptyTitle="No students yet"
+        emptySubtitle="Click “Add Student” to create one."
+        rowKey={(r) => r.id}
+        rowLink={(r) => `/students/${r.id}`}
+      />
 
       <AddStudentModal
         open={addOpen}

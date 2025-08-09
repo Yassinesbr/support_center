@@ -94,52 +94,49 @@ export default function ClassesListPage() {
         cell: ({ row }) => <span>{row.students?.length ?? 0}</span>,
         align: "center",
       },
-      {
-        header: "Open",
-        cell: ({ row }) => (
-          <Link
-            to={`/classes/${row.id}`}
-            className="text-brand-600 hover:underline"
-          >
-            View
-          </Link>
-        ),
-        align: "right",
-        width: "w-20",
-      },
     ],
     []
   );
 
   return (
-    <DataTable<ClassRow>
-      data={rows}
-      columns={columns}
-      loading={loading}
-      density="comfortable"
-      serverMode={serverMode}
-      sort={{ sortBy, sortDir }}
-      onSortChange={({ sortBy, sortDir }) => {
-        setSortBy(sortBy ?? null);
-        setSortDir(sortDir);
-        setPage(1);
-      }}
-      pagination={{ page, pageSize, total }}
-      onPageChange={setPage}
-      onPageSizeChange={(s) => {
-        setPageSize(s);
-        setPage(1);
-      }}
-      //   toolbarLeft={<div className="font-semibold">Classes</div>}
-      //   toolbarRight={
-      //     <div className="flex items-center gap-2">
-      //       {/* drop in your search/filter controls here */}
-      //     </div>
-      //   }
-      emptyTitle="No classes scheduled"
-      emptySubtitle="Create a class to get started."
-      rowKey={(r) => r.id}
-      rowLink={(r) => `/classes/${r.id}`}
-    />
+    <>
+      <div className="mb-3 flex items-center justify-between">
+        <h1 className="text-xl font-semibold">
+          Classes
+          <span className="text-sm text-gray-500 ml-2">
+            ({rows.length} scheduled)
+          </span>
+        </h1>
+      </div>
+      <DataTable<ClassRow>
+        data={rows}
+        columns={columns}
+        loading={loading}
+        density="comfortable"
+        serverMode={serverMode}
+        sort={{ sortBy, sortDir }}
+        onSortChange={({ sortBy, sortDir }) => {
+          setSortBy(sortBy ?? null);
+          setSortDir(sortDir);
+          setPage(1);
+        }}
+        pagination={{ page, pageSize, total }}
+        onPageChange={setPage}
+        onPageSizeChange={(s) => {
+          setPageSize(s);
+          setPage(1);
+        }}
+        //   toolbarLeft={<div className="font-semibold">Classes</div>}
+        //   toolbarRight={
+        //     <div className="flex items-center gap-2">
+        //       {/* drop in your search/filter controls here */}
+        //     </div>
+        //   }
+        emptyTitle="No classes scheduled"
+        emptySubtitle="Create a class to get started."
+        rowKey={(r) => r.id}
+        rowLink={(r) => `/classes/${r.id}`}
+      />
+    </>
   );
 }
