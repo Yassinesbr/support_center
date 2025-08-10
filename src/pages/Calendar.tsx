@@ -8,13 +8,47 @@ import { Modal } from "../components/ui/modal";
 import { useModal } from "../hooks/useModal";
 import PageMeta from "../components/common/PageMeta";
 import api from "../api/axios";
-// import api from "../utils/api"; // adjust path if needed
 
 interface CalendarEvent extends EventInput {
   extendedProps: {
     calendar: string;
+    [k: string]: any;
   };
 }
+
+type ClassTime = {
+  id: string;
+  dayOfWeek: number; // 0..6 (Sun..Sat)
+  startMinutes: number; // 0..1440
+  endMinutes: number; // 0..1440
+};
+
+type ClassRow = {
+  id: string;
+  name: string;
+  description?: string;
+  startAt?: string | null;
+  endAt?: string | null;
+  teacher?: {
+    user?: { firstName?: string; lastName?: string; email?: string };
+  };
+  classTimes?: ClassTime[];
+};
+
+const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const pad2 = (n: number) => String(n).padStart(2, "0");
+const mmToHHMM = (mins: number) =>
+  `${pad2(Math.floor(mins / 60))}:${pad2(mins % 60)}`;
+const setHM = (d: Date, minutes: number) => {
+  const x = new Date(d);
+  x.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0);
+  return x;
+};
+const addDays = (d: Date, n: number) => {
+  const x = new Date(d);
+  x.setDate(x.getDate() + n);
+  return x;
+};
 
 const Calendar: React.FC = () => {
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(
@@ -25,8 +59,10 @@ const Calendar: React.FC = () => {
   const [eventEndDate, setEventEndDate] = useState("");
   const [eventLevel, setEventLevel] = useState("");
   const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [classes, setClasses] = useState<ClassRow[] | null>(null);
   const calendarRef = useRef<FullCalendar>(null);
   const { isOpen, openModal, closeModal } = useModal();
+  const viewRangeRef = useRef<{ start: Date; end: Date } | null>(null);
 
   const calendarsEvents = {
     Danger: "danger",
@@ -35,34 +71,90 @@ const Calendar: React.FC = () => {
     Warning: "warning",
   };
 
+  // Fetch classes (with classTimes)
   useEffect(() => {
-    // Fetch classes and map to events
     (async () => {
       try {
         const { data } = await api.get("/classes");
-        // If your backend returns { items: ClassRow[] }, adjust accordingly
-        const classList = data.items ?? data;
-        const classEvents = classList.map((cls: any) => ({
-          id: cls.id,
-          title: cls.name,
-          start: cls.startAt,
-          end: cls.endAt,
-          extendedProps: {
-            calendar: "Primary", // or map to a color/category as needed
-            description: cls.description,
-            teacher: cls.teacher?.user?.firstName
-              ? `${cls.teacher.user.firstName} ${cls.teacher.user.lastName}`
-              : undefined,
-          },
-        }));
-        setEvents(classEvents);
-      } catch (e) {
-        // fallback: show nothing or static events
+        const list: ClassRow[] = data?.items ?? data ?? [];
+        setClasses(list);
+        // if we already know current visible range, build immediately
+        if (viewRangeRef.current) {
+          setEvents(
+            buildScheduleEvents(
+              viewRangeRef.current.start,
+              viewRangeRef.current.end,
+              list
+            )
+          );
+        }
+      } catch {
+        setClasses([]);
         setEvents([]);
       }
     })();
   }, []);
 
+  // Build visible events from classTimes
+  const buildScheduleEvents = (
+    rangeStart: Date,
+    rangeEnd: Date,
+    classList: ClassRow[] | null
+  ) => {
+    if (!classList || !classList.length) return [] as CalendarEvent[];
+    const out: CalendarEvent[] = [];
+
+    for (const cls of classList) {
+      const times = cls.classTimes ?? [];
+      if (!times.length) continue;
+
+      const courseStart = cls.startAt ? new Date(cls.startAt) : null;
+      const courseEnd = cls.endAt ? new Date(cls.endAt) : null;
+
+      for (const t of times) {
+        // first occurrence in the visible range on the requested weekday
+        const first = new Date(rangeStart);
+        const delta = (t.dayOfWeek - first.getDay() + 7) % 7;
+        first.setDate(first.getDate() + delta);
+
+        for (let d = new Date(first); d <= rangeEnd; d = addDays(d, 7)) {
+          const s = setHM(d, t.startMinutes);
+          const e = setHM(d, t.endMinutes);
+
+          // respect overall course window if provided (but not for labeling)
+          if (courseStart && e < courseStart) continue;
+          if (courseEnd && s > courseEnd) continue;
+
+          const label = `${cls.name} — ${dayNames[t.dayOfWeek]} ${mmToHHMM(
+            t.startMinutes
+          )}–${mmToHHMM(t.endMinutes)}`;
+          out.push({
+            id: `${cls.id}-${t.id}-${+s}`, // any unique id is fine
+            title: cls.name, // ⬅️ title only, like “test event”
+            start: s, // ⬅️ pass Date objects (local)
+            end: e, // ⬅️ pass Date objects (local)
+            extendedProps: {
+              calendar: "Primary",
+              classId: cls.id,
+              timeId: t.id,
+              teacher: cls.teacher?.user?.email,
+              description: cls.description,
+            },
+          });
+        }
+      }
+    }
+    return out;
+  };
+
+  // FullCalendar visible range changed => rebuild from schedule
+  const handleDatesSet = (arg: any) => {
+    const range = { start: arg.start, end: arg.end };
+    viewRangeRef.current = range;
+    setEvents(buildScheduleEvents(range.start, range.end, classes));
+  };
+
+  // Keep your existing modal flows for ad-hoc events (optional)
   const handleDateSelect = (selectInfo: DateSelectArg) => {
     resetModalFields();
     setEventStartDate(selectInfo.startStr);
@@ -76,28 +168,26 @@ const Calendar: React.FC = () => {
     setEventTitle(event.title);
     setEventStartDate(event.start?.toISOString().split("T")[0] || "");
     setEventEndDate(event.end?.toISOString().split("T")[0] || "");
-    setEventLevel(event.extendedProps.calendar);
+    setEventLevel((event.extendedProps as any)?.calendar || "Primary");
     openModal();
   };
 
   const handleAddOrUpdateEvent = () => {
     if (selectedEvent) {
-      // Update existing event
-      setEvents((prevEvents) =>
-        prevEvents.map((event) =>
-          event.id === selectedEvent.id
+      setEvents((prev) =>
+        prev.map((e) =>
+          e.id === selectedEvent.id
             ? {
-                ...event,
+                ...e,
                 title: eventTitle,
                 start: eventStartDate,
                 end: eventEndDate,
                 extendedProps: { calendar: eventLevel },
               }
-            : event
+            : e
         )
       );
     } else {
-      // Add new event
       const newEvent: CalendarEvent = {
         id: Date.now().toString(),
         title: eventTitle,
@@ -106,7 +196,7 @@ const Calendar: React.FC = () => {
         allDay: true,
         extendedProps: { calendar: eventLevel },
       };
-      setEvents((prevEvents) => [...prevEvents, newEvent]);
+      setEvents((prev) => [...prev, newEvent]);
     }
     closeModal();
     resetModalFields();
@@ -122,31 +212,29 @@ const Calendar: React.FC = () => {
 
   return (
     <>
-      <PageMeta
-        title="React.js Calendar Dashboard | TailAdmin - Next.js Admin Dashboard Template"
-        description="This is React.js Calendar Dashboard page for TailAdmin - React.js Tailwind CSS Admin Dashboard Template"
-      />
+      <PageMeta title="Calendar" description="Weekly class schedule calendar" />
       <div className="rounded-2xl border  border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
         <div className="custom-calendar">
           <FullCalendar
             ref={calendarRef}
             plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-            initialView="dayGridMonth"
+            initialView="dayGridMonth" // show weekly times nicely
             headerToolbar={{
-              left: "prev,next addEventButton",
+              left: "prev,next today addEventButton",
               center: "title",
               right: "dayGridMonth,timeGridWeek,timeGridDay",
             }}
+            allDaySlot={false}
+            slotMinTime="08:00:00"
+            slotMaxTime="22:30:00"
             events={events}
+            datesSet={handleDatesSet} // ⬅️ build from ClassTime per visible range
             selectable={true}
             select={handleDateSelect}
             eventClick={handleEventClick}
             eventContent={renderEventContent}
             customButtons={{
-              addEventButton: {
-                text: "Add Event +",
-                click: openModal,
-              },
+              addEventButton: { text: "Add Event +", click: openModal },
             }}
           />
         </div>
@@ -167,18 +255,16 @@ const Calendar: React.FC = () => {
             </div>
             <div className="mt-8">
               <div>
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                    Event Title
-                  </label>
-                  <input
-                    id="event-title"
-                    type="text"
-                    value={eventTitle}
-                    onChange={(e) => setEventTitle(e.target.value)}
-                    className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
-                  />
-                </div>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
+                  Event Title
+                </label>
+                <input
+                  id="event-title"
+                  type="text"
+                  value={eventTitle}
+                  onChange={(e) => setEventTitle(e.target.value)}
+                  className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
+                />
               </div>
               <div className="mt-6">
                 <label className="block mb-4 text-sm font-medium text-gray-700 dark:text-gray-400">
@@ -209,7 +295,7 @@ const Calendar: React.FC = () => {
                                 className={`h-2 w-2 rounded-full bg-white ${
                                   eventLevel === key ? "block" : "hidden"
                                 }`}
-                              ></span>
+                              />
                             </span>
                           </span>
                           {key}
@@ -250,6 +336,7 @@ const Calendar: React.FC = () => {
                 </div>
               </div>
             </div>
+
             <div className="flex items-center gap-3 mt-6 modal-footer sm:justify-end">
               <button
                 onClick={closeModal}
@@ -274,13 +361,19 @@ const Calendar: React.FC = () => {
 };
 
 const renderEventContent = (eventInfo: any) => {
-  const colorClass = `fc-bg-${eventInfo.event.extendedProps.calendar.toLowerCase()}`;
+  const level = String(
+    eventInfo.event.extendedProps.calendar || "Primary"
+  ).toLowerCase();
+  const colorClass = `fc-bg-${level}`;
+  const isMonth = eventInfo.view.type.includes("dayGrid"); // month view
+
   return (
     <div
       className={`event-fc-color flex fc-event-main ${colorClass} p-1 rounded-sm`}
     >
       <div className="fc-daygrid-event-dot"></div>
-      <div className="fc-event-time">{eventInfo.timeText}</div>
+      {/* In month view, hide the time so it's a simple chip like your test event */}
+      {!isMonth && <div className="fc-event-time">{eventInfo.timeText}</div>}
       <div className="fc-event-title">{eventInfo.event.title}</div>
     </div>
   );

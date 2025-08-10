@@ -1,6 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { CreateClassDto } from './dto/create-class.dto';
+import { UpdateClassDto } from './dto/update-class.dto';
+import { CreateClassTimeDto } from './dto/create-class-time.dto';
+import { UpdateClassTimeDto } from './dto/update-class-time.dto';
 
 @Injectable()
 export class ClassesService {
@@ -11,8 +14,20 @@ export class ClassesService {
       include: {
         teacher: { include: { user: true } },
         students: { include: { user: true } },
+        classTimes: true,
       },
       orderBy: { startAt: 'asc' },
+    });
+  }
+
+  async findOne(id: string) {
+    return this.prisma.class.findUnique({
+      where: { id },
+      include: {
+        teacher: { include: { user: true } },
+        students: { include: { user: true } },
+        classTimes: true, // new relation
+      },
     });
   }
 
@@ -83,5 +98,90 @@ export class ClassesService {
         students: { include: { user: true } },
       },
     });
+  }
+
+  async update(id: string, data: UpdateClassDto) {
+    const existing = await this.prisma.class.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('Class not found');
+
+    return this.prisma.class.update({
+      where: { id },
+      data: {
+        name: data.name ?? undefined,
+        description: data.description ?? undefined,
+        teacherId: data.teacherId ?? undefined,
+        startAt: data.startAt ? new Date(data.startAt) : undefined,
+        endAt: data.endAt ? new Date(data.endAt) : undefined,
+      },
+      include: {
+        teacher: { include: { user: true } },
+        students: { include: { user: true } },
+        classTimes: true,
+      },
+    });
+  }
+
+  async remove(id: string) {
+    // cascade deletes ClassTime via FK if desired (or deleteMany first)
+    await this.prisma.classTime.deleteMany({ where: { classId: id } });
+    return this.prisma.class.delete({ where: { id } });
+  }
+
+  // ---- Times ----
+  async listTimes(classId: string) {
+    await this.ensureClass(classId);
+    return this.prisma.classTime.findMany({
+      where: { classId },
+      orderBy: [{ dayOfWeek: 'asc' }, { startMinutes: 'asc' }],
+    });
+  }
+
+  async addTime(classId: string, dto: CreateClassTimeDto) {
+    await this.ensureClass(classId);
+    if (dto.endMinutes <= dto.startMinutes) {
+      throw new NotFoundException(
+        'endMinutes must be greater than startMinutes',
+      );
+    }
+    return this.prisma.classTime.create({ data: { classId, ...dto } });
+  }
+
+  async updateTime(classId: string, timeId: string, dto: UpdateClassTimeDto) {
+    await this.ensureClass(classId);
+    const time = await this.prisma.classTime.findUnique({
+      where: { id: timeId },
+    });
+    if (!time || time.classId !== classId)
+      throw new NotFoundException('Time not found');
+
+    const next = {
+      dayOfWeek: dto.dayOfWeek ?? time.dayOfWeek,
+      startMinutes: dto.startMinutes ?? time.startMinutes,
+      endMinutes: dto.endMinutes ?? time.endMinutes,
+    };
+    if (next.endMinutes <= next.startMinutes) {
+      throw new NotFoundException(
+        'endMinutes must be greater than startMinutes',
+      );
+    }
+
+    return this.prisma.classTime.update({ where: { id: timeId }, data: dto });
+  }
+
+  async removeTime(classId: string, timeId: string) {
+    await this.ensureClass(classId);
+    const time = await this.prisma.classTime.findUnique({
+      where: { id: timeId },
+    });
+    if (!time || time.classId !== classId)
+      throw new NotFoundException('Time not found');
+    return this.prisma.classTime.delete({ where: { id: timeId } });
+  }
+
+  private async ensureClass(classId: string) {
+    const klass = await this.prisma.class.findUnique({
+      where: { id: classId },
+    });
+    if (!klass) throw new NotFoundException('Class not found');
   }
 }

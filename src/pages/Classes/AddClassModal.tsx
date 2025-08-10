@@ -1,211 +1,150 @@
-// src/pages/Classes/AddClassModal.tsx
 import { useEffect, useState } from "react";
 import { Modal } from "../../components/ui/modal";
+import Select from "../../components/form/Select";
 import api from "../../api/axios";
+import {
+  useCreateClass,
+  useUpdateClass,
+  ClassRow,
+} from "../../hooks/useClasses";
 
 type Props = {
   open: boolean;
   onClose: () => void;
-  onCreated?: () => void;
+  onSaved?: (id: string) => void;
+  initial?: ClassRow | null; // if set => edit mode
 };
 
-type Teacher = {
-  id: string;
-  user?: { firstName?: string; lastName?: string; email: string };
-};
+export default function AddClassModal({
+  open,
+  onClose,
+  onSaved,
+  initial,
+}: Props) {
+  const createClass = useCreateClass();
+  const updateClass = useUpdateClass();
 
-const initialState = {
-  name: "",
-  description: "",
-  teacherId: "",
-  startAt: "",
-  endAt: "",
-};
-
-export default function AddClassModal({ open, onClose, onCreated }: Props) {
-  const [teachers, setTeachers] = useState<Teacher[]>([]);
-  const [loadingTeachers, setLoadingTeachers] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const [form, setForm] = useState(initialState);
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [teacherId, setTeacherId] = useState("");
+  const [startAt, setStartAt] = useState("");
+  const [endAt, setEndAt] = useState("");
+  const [teachers, setTeachers] = useState<{ value: string; label: string }[]>(
+    []
+  );
 
   useEffect(() => {
     if (!open) return;
     (async () => {
-      setLoadingTeachers(true);
-      try {
-        const { data } = await api.get<Teacher[]>("/teachers");
-        setTeachers(data);
-      } finally {
-        setLoadingTeachers(false);
-      }
+      const res = await api.get("/teachers");
+      setTeachers(
+        res.data.map((t: any) => ({
+          value: t.id,
+          label:
+            `${t.user?.firstName ?? ""} ${t.user?.lastName ?? ""}`.trim() ||
+            t.user?.email,
+        }))
+      );
     })();
   }, [open]);
 
-  const onChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >
-  ) => {
-    const { name, value } = e.target;
-    setForm((f) => ({ ...f, [name]: value }));
-  };
+  useEffect(() => {
+    if (initial) {
+      setName(initial.name ?? "");
+      setDescription(initial.description ?? "");
+      setTeacherId(initial.teacher?.id ?? "");
+      setStartAt(initial.startAt ? initial.startAt.substring(0, 16) : "");
+      setEndAt(initial.endAt ? initial.endAt.substring(0, 16) : "");
+    } else {
+      setName("");
+      setDescription("");
+      setTeacherId("");
+      setStartAt("");
+      setEndAt("");
+    }
+  }, [initial, open]);
 
-  const reset = () => {
-    setForm(initialState);
-    setError(null);
-  };
-
-  const handleClose = () => {
-    reset();
+  const onSubmit = async () => {
+    const payload = {
+      name,
+      description,
+      teacherId,
+      startAt: startAt ? new Date(startAt).toISOString() : undefined,
+      endAt: endAt ? new Date(endAt).toISOString() : undefined,
+    };
+    const isEdit = !!initial?.id;
+    const data = isEdit
+      ? await updateClass.mutateAsync({ id: initial!.id, data: payload })
+      : await createClass.mutateAsync(payload);
+    onSaved?.(data.id);
     onClose();
   };
 
-  const submit = async () => {
-    setError(null);
-    if (!form.name || !form.teacherId || !form.startAt || !form.endAt) {
-      setError("Name, teacher, start and end are required.");
-      return;
-    }
-    setSubmitting(true);
-    try {
-      await api.post("/classes", {
-        name: form.name,
-        description: form.description || undefined,
-        teacherId: form.teacherId,
-        startAt: new Date(form.startAt).toISOString(),
-        endAt: new Date(form.endAt).toISOString(),
-      });
-      onCreated?.();
-      handleClose();
-    } catch (err: any) {
-      const msg =
-        err?.response?.data?.message ||
-        err?.message ||
-        "Failed to create class.";
-      setError(Array.isArray(msg) ? msg.join(", ") : String(msg));
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   return (
-    <Modal
-      isOpen={open}
-      onClose={handleClose}
-      showCloseButton
-      className="max-w-3xl"
-    >
-      {/* Header */}
-      <div className="px-6 pt-6">
-        <h3 className="text-lg font-semibold">Add Class</h3>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          Enter the class information below.
-        </p>
-      </div>
-
-      {/* Error */}
-      {error && (
-        <div className="mx-6 mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-red-700 text-sm">
-          {error}
+    <Modal isOpen={open} onClose={onClose} className="max-w-2xl p-6">
+      <h3 className="text-lg font-semibold">
+        {initial ? "Modify Class" : "Add Class"}
+      </h3>
+      <div className="mt-4 space-y-4">
+        <div>
+          <label className="block text-xs font-medium mb-1">Name</label>
+          <input
+            className="w-full rounded-lg border px-3 py-2"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
         </div>
-      )}
-
-      {/* Body */}
-      <div className="px-6 py-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Name */}
+        <div>
+          <label className="block text-xs font-medium mb-1">Description</label>
+          <textarea
+            className="w-full rounded-lg border px-3 py-2"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium mb-1">Teacher</label>
+          <Select
+            options={teachers}
+            placeholder="Choose a teacher"
+            defaultValue={teacherId}
+            onChange={(v) => setTeacherId(v)}
+          />
+        </div>
+        <div className="grid sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-medium mb-1">Name</label>
-            <input
-              name="name"
-              value={form.name}
-              onChange={onChange}
-              className="w-full rounded-lg border px-3 py-2"
-              placeholder="e.g. Math 101"
-            />
-          </div>
-          {/* Teacher */}
-          <div>
-            <label className="block text-xs font-medium mb-1">Teacher</label>
-            <select
-              name="teacherId"
-              value={form.teacherId}
-              onChange={onChange}
-              className="w-full rounded-lg border px-3 py-2"
-              disabled={loadingTeachers}
-            >
-              <option value="">
-                {loadingTeachers ? "Loading..." : "Select a teacher"}
-              </option>
-              {teachers.map((t) => {
-                const name =
-                  [t.user?.firstName, t.user?.lastName]
-                    .filter(Boolean)
-                    .join(" ") || t.user?.email;
-                return (
-                  <option key={t.id} value={t.id}>
-                    {name}
-                  </option>
-                );
-              })}
-            </select>
-          </div>
-          {/* Description */}
-          <div className="md:col-span-2">
             <label className="block text-xs font-medium mb-1">
-              Description
+              Start (optional)
             </label>
-            <textarea
-              name="description"
-              value={form.description}
-              onChange={onChange}
-              className="w-full rounded-lg border px-3 py-2"
-              placeholder="Optional"
-              rows={3}
-            />
-          </div>
-          {/* Start */}
-          <div>
-            <label className="block text-xs font-medium mb-1">Start</label>
             <input
               type="datetime-local"
-              name="startAt"
-              value={form.startAt}
-              onChange={onChange}
               className="w-full rounded-lg border px-3 py-2"
+              value={startAt}
+              onChange={(e) => setStartAt(e.target.value)}
             />
           </div>
-          {/* End */}
           <div>
-            <label className="block text-xs font-medium mb-1">End</label>
+            <label className="block text-xs font-medium mb-1">
+              End (optional)
+            </label>
             <input
               type="datetime-local"
-              name="endAt"
-              value={form.endAt}
-              onChange={onChange}
               className="w-full rounded-lg border px-3 py-2"
+              value={endAt}
+              onChange={(e) => setEndAt(e.target.value)}
             />
           </div>
         </div>
       </div>
-
-      {/* Footer */}
-      <div className="px-6 pb-6 flex justify-end gap-2">
-        <button
-          onClick={handleClose}
-          className="rounded-lg border px-4 py-2 text-sm"
-          disabled={submitting}
-        >
+      <div className="mt-6 flex justify-end gap-3">
+        <button className="rounded-lg border px-4 py-2" onClick={onClose}>
           Cancel
         </button>
         <button
-          onClick={submit}
-          className="rounded-lg bg-brand-600 text-white px-4 py-2 text-sm disabled:opacity-60"
-          disabled={submitting}
+          className="rounded-lg bg-brand-600 text-white px-4 py-2"
+          onClick={onSubmit}
         >
-          {submitting ? "Creating..." : "Create Class"}
+          {initial ? "Save changes" : "Create"}
         </button>
       </div>
     </Modal>

@@ -14,58 +14,73 @@ enum Role {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
+  id        String  @id @default(uuid())
+  email     String  @unique
   password  String
   role      String
   firstName String?
   lastName  String?
 
-  student    Student?
-  teacher    Teacher?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt @default(now())
+  student   Student?
+  teacher   Teacher?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 }
 
 model Student {
-  id             String   @id @default(uuid())
-  user           User     @relation(fields: [userId], references: [id])
-  userId         String   @unique
+  id     String @id @default(uuid())
+  user   User   @relation(fields: [userId], references: [id])
+  userId String @unique
 
-  birthDate      DateTime?      
-  address        String?        
-  phone          String?        
-  parentName     String?        
-  parentPhone    String?        
-  enrollmentDate DateTime @default(now())
-  paymentStatus  String?        
+  birthDate      DateTime?
+  address        String?
+  phone          String?
+  parentName     String?
+  parentPhone    String?
+  enrollmentDate DateTime  @default(now())
+  paymentStatus  String?
 
-  classes        Class[]  @relation("ClassStudents")
+  classes Class[] @relation("ClassStudents")
 }
 
 model Teacher {
-  id            String    @id @default(uuid())
-  user          User      @relation(fields: [userId], references: [id])
-  userId        String    @unique
+  id     String @id @default(uuid())
+  user   User   @relation(fields: [userId], references: [id])
+  userId String @unique
 
-  birthDate     DateTime?     
-  address       String?       
-  phone         String?       
-  hiringDate    DateTime @default(now())
-  subject       String?        
-  salary        Float?        
+  birthDate  DateTime?
+  address    String?
+  phone      String?
+  hiringDate DateTime  @default(now())
+  subject    String?
+  salary     Float?
 
-  classes       Class[]   @relation("TeacherClasses")
+  classes Class[] @relation("TeacherClasses")
 }
 
 model Class {
-  id          String    @id @default(uuid())
+  id          String      @id @default(uuid())
   name        String
   description String?
-  teacher     Teacher   @relation("TeacherClasses", fields: [teacherId], references: [id])
+  teacher     Teacher     @relation("TeacherClasses", fields: [teacherId], references: [id])
   teacherId   String
-  students    Student[] @relation("ClassStudents")
+  students    Student[]   @relation("ClassStudents")
   startAt     DateTime?
   endAt       DateTime?
-  createdAt   DateTime  @default(now())
+  createdAt   DateTime    @default(now())
+  classTimes  ClassTime[]
+}
+
+model ClassTime {
+  id           String   @id @default(uuid())
+  class        Class    @relation(fields: [classId], references: [id])
+  classId      String
+  dayOfWeek    Int // 0=Sunday ... 6=Saturday
+  startMinutes Int // e.g. 20:00 => 20*60 = 1200
+  endMinutes   Int // must be > startMinutes
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([classId])
+  @@index([dayOfWeek])
 }
