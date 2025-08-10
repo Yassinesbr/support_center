@@ -7,6 +7,8 @@ import { EventInput, DateSelectArg, EventClickArg } from "@fullcalendar/core";
 import { Modal } from "../components/ui/modal";
 import { useModal } from "../hooks/useModal";
 import PageMeta from "../components/common/PageMeta";
+import api from "../api/axios";
+// import api from "../utils/api"; // adjust path if needed
 
 interface CalendarEvent extends EventInput {
   extendedProps: {
@@ -34,28 +36,31 @@ const Calendar: React.FC = () => {
   };
 
   useEffect(() => {
-    // Initialize with some events
-    setEvents([
-      {
-        id: "1",
-        title: "Event Conf.",
-        start: new Date().toISOString().split("T")[0],
-        extendedProps: { calendar: "Danger" },
-      },
-      {
-        id: "2",
-        title: "Meeting",
-        start: new Date(Date.now() + 86400000).toISOString().split("T")[0],
-        extendedProps: { calendar: "Success" },
-      },
-      {
-        id: "3",
-        title: "Workshop",
-        start: new Date(Date.now() + 172800000).toISOString().split("T")[0],
-        end: new Date(Date.now() + 259200000).toISOString().split("T")[0],
-        extendedProps: { calendar: "Primary" },
-      },
-    ]);
+    // Fetch classes and map to events
+    (async () => {
+      try {
+        const { data } = await api.get("/classes");
+        // If your backend returns { items: ClassRow[] }, adjust accordingly
+        const classList = data.items ?? data;
+        const classEvents = classList.map((cls: any) => ({
+          id: cls.id,
+          title: cls.name,
+          start: cls.startAt,
+          end: cls.endAt,
+          extendedProps: {
+            calendar: "Primary", // or map to a color/category as needed
+            description: cls.description,
+            teacher: cls.teacher?.user?.firstName
+              ? `${cls.teacher.user.firstName} ${cls.teacher.user.lastName}`
+              : undefined,
+          },
+        }));
+        setEvents(classEvents);
+      } catch (e) {
+        // fallback: show nothing or static events
+        setEvents([]);
+      }
+    })();
   }, []);
 
   const handleDateSelect = (selectInfo: DateSelectArg) => {

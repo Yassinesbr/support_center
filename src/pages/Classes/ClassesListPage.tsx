@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import api from "../../api/axios";
 import DataTable, { ColumnDef } from "../../components/DataTable/DataTable";
 import { Link } from "react-router";
+import AddClassModal from "./AddClassModal";
 
 type User = { firstName?: string; lastName?: string; email: string };
 type Teacher = { id: string; user: User };
@@ -26,6 +27,7 @@ export default function ClassesListPage() {
   const [total, setTotal] = useState<number | undefined>(undefined); // set if server-mode
   const [sortBy, setSortBy] = useState<string | null>("startAt");
   const [sortDir, setSortDir] = useState<"asc" | "desc" | null>("asc");
+  const [createOpen, setCreateOpen] = useState(false);
 
   // server-mode fetch (recommended for large data)
   const serverMode = true;
@@ -107,7 +109,19 @@ export default function ClassesListPage() {
             ({rows.length} scheduled)
           </span>
         </h1>
+        <div className="flex items-center gap-2">
+          <Link to="/calendar" className="px-3 py-2 rounded-lg border">
+            Open Agenda
+          </Link>
+          <button
+            className="px-3 py-2 rounded-lg bg-brand-600 text-white"
+            onClick={() => setCreateOpen(true)}
+          >
+            Create Class
+          </button>
+        </div>
       </div>
+
       <DataTable<ClassRow>
         data={rows}
         columns={columns}
@@ -126,16 +140,30 @@ export default function ClassesListPage() {
           setPageSize(s);
           setPage(1);
         }}
-        //   toolbarLeft={<div className="font-semibold">Classes</div>}
-        //   toolbarRight={
-        //     <div className="flex items-center gap-2">
-        //       {/* drop in your search/filter controls here */}
-        //     </div>
-        //   }
         emptyTitle="No classes scheduled"
         emptySubtitle="Create a class to get started."
         rowKey={(r) => r.id}
         rowLink={(r) => `/classes/${r.id}`}
+      />
+
+      <AddClassModal
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        onCreated={() => {
+          // re-fetch the current page
+          (async () => {
+            setLoading(true);
+            try {
+              const { data } = await api.get("/classes", {
+                params: { page, pageSize, sortBy, sortDir },
+              });
+              setRows(data.items ?? data);
+              setTotal(data.total);
+            } finally {
+              setLoading(false);
+            }
+          })();
+        }}
       />
     </>
   );
