@@ -12,6 +12,54 @@ import * as crypto from 'crypto';
 export class StudentsService {
   constructor(private prisma: PrismaService) {}
 
+  async getOne(id: string) {
+    return this.prisma.student.findUnique({
+      where: { id },
+      include: {
+        user: true,
+        classes: { select: { id: true, name: true } },
+      },
+    });
+  }
+
+  async setClasses(studentId: string, classIds: string[]) {
+    // Optional: validate the class ids exist
+    const existing = await this.prisma.class.findMany({
+      where: { id: { in: classIds } },
+      select: { id: true },
+    });
+    const validIds = new Set(existing.map((c) => c.id));
+    const cleaned = classIds.filter((id) => validIds.has(id));
+
+    return this.prisma.student.update({
+      where: { id: studentId },
+      data: {
+        classes: {
+          set: cleaned.map((id) => ({ id })), // replaces the whole list
+        },
+      },
+      include: {
+        user: true,
+        classes: { select: { id: true, name: true } },
+      },
+    });
+  }
+
+  async addClass(studentId: string, classId: string) {
+    return this.prisma.student.update({
+      where: { id: studentId },
+      data: { classes: { connect: { id: classId } } },
+      include: { classes: { select: { id: true, name: true } } },
+    });
+  }
+  async removeClass(studentId: string, classId: string) {
+    return this.prisma.student.update({
+      where: { id: studentId },
+      data: { classes: { disconnect: { id: classId } } },
+      include: { classes: { select: { id: true, name: true } } },
+    });
+  }
+
   findAll(search?: string) {
     return this.prisma.student.findMany({
       where: search
@@ -31,10 +79,13 @@ export class StudentsService {
     });
   }
 
-  findOne(id: string) {
+  async findOne(id: string) {
     return this.prisma.student.findUnique({
       where: { id },
-      include: { user: true },
+      include: {
+        user: true,
+        classes: { select: { id: true, name: true } }, // <-- add this
+      },
     });
   }
 

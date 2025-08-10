@@ -1,13 +1,27 @@
-import { useQuery } from "@tanstack/react-query";
-import axios from "../api/axios";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import api from "../api/axios";
 
-export function useStudents(search: string = "") {
-  return useQuery({
-    queryKey: ["students", search],
-    queryFn: async () => {
-      const params = search ? { params: { search } } : {};
-      const res = await axios.get("/students", params);
-      return res.data;
+export type StudentRow = {
+  id: string;
+  user?: { firstName?: string; lastName?: string; email?: string };
+  classes?: { id: string; name: string }[];
+};
+
+export const useStudent = (id?: string) =>
+  useQuery({
+    enabled: !!id,
+    queryKey: ["student", id],
+    queryFn: async () => (await api.get(`/students/${id}`)).data as StudentRow,
+  });
+
+export const useSetStudentClasses = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, classIds }: { id: string; classIds: string[] }) =>
+      (await api.put(`/students/${id}/classes`, { classIds })).data,
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: ["student", vars.id] });
+      qc.invalidateQueries({ queryKey: ["classes"] });
     },
   });
-}
+};

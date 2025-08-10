@@ -94,6 +94,11 @@ export default function UserMetaCard({
                   {email}
                 </p>
               </div>
+              <div className="flex flex-col items-center gap-1 text-center xl:flex-row xl:gap-3 xl:text-left">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  {address}
+                </p>
+              </div>
             </div>
             <div className="flex items-center order-2 gap-2 grow xl:order-3 xl:justify-end">
               <a

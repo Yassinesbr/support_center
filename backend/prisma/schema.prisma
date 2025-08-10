@@ -25,6 +25,7 @@ model User {
   teacher   Teacher?
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
+  classes   Class[]
 }
 
 model Student {
@@ -69,6 +70,8 @@ model Class {
   endAt       DateTime?
   createdAt   DateTime    @default(now())
   classTimes  ClassTime[]
+  User        User?       @relation(fields: [userId], references: [id])
+  userId      String?
 }
 
 model ClassTime {
