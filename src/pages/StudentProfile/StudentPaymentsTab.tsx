@@ -80,7 +80,7 @@ export default function StudentPaymentsTab({
                         : "bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full text-xs"
                     }
                   >
-                    {inv.status}
+                    {inv.status === "PAID" ? "Paid" : "Unpaid"}
                   </span>
                 </td>
                 <td
@@ -144,10 +144,12 @@ export default function StudentPaymentsTab({
                 className={
                   selected.status === "PAID"
                     ? "bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-xs"
+                    : selected.status === "OVERDUE"
+                    ? "bg-red-100 text-red-700 px-2 py-0.5 rounded-full text-xs"
                     : "bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full text-xs"
                 }
               >
-                {selected.status}
+                {selected.status === "PAID" ? "Paid" : "Unpaid"}
               </span>
             </div>
 
@@ -177,27 +179,36 @@ export default function StudentPaymentsTab({
                           )}
                         </div>
                       </div>
-                      {it.status === "PAID" ? (
-                        <span className="text-green-700 bg-green-100 text-xs px-2 py-0.5 rounded-full">
-                          PAID
-                        </span>
-                      ) : (
-                        <button
-                          className="px-3 py-1 rounded bg-indigo-600 text-white text-xs disabled:opacity-60"
-                          onClick={() =>
-                            payItemMut.mutate({
-                              invoiceId: selected.id,
-                              itemId: it.id,
-                              amountCents: remaining,
-                            })
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={
+                            it.status === "PAID"
+                              ? "bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-xs"
+                              : it.status === "WAIVED"
+                              ? "bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full text-xs"
+                              : "bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full text-xs"
                           }
-                          disabled={payItemMut.isPending}
                         >
-                          {payItemMut.isPending
-                            ? "Paying…"
-                            : `Pay ${cc(remaining, selected.currency)}`}
-                        </button>
-                      )}
+                          {it.status ?? "DUE"}
+                        </span>
+                        {it.status !== "PAID" && (
+                          <button
+                            className="px-3 py-1 rounded bg-indigo-600 text-white text-xs disabled:opacity-60"
+                            onClick={() =>
+                              payItemMut.mutate({
+                                invoiceId: selected.id,
+                                itemId: it.id,
+                                amountCents: remaining,
+                              })
+                            }
+                            disabled={payItemMut.isPending}
+                          >
+                            {payItemMut.isPending
+                              ? "Paying…"
+                              : `Pay ${cc(remaining, selected.currency)}`}
+                          </button>
+                        )}
+                      </div>
                     </li>
                   );
                 })}

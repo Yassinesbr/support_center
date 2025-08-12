@@ -4,6 +4,7 @@ import { useInvoices } from "../../hooks/useInvoices";
 import { useGenerateMonthly } from "../../hooks/useGenerateMonthly";
 import { useInvoicePdf } from "../../hooks/useInvoicePdf";
 import { usePayInvoice } from "../../hooks/usePayInvoice";
+import { usePayInvoiceItem } from "../../hooks/usePayInvoiceItem";
 import { Modal } from "../../components/ui/modal";
 
 type Invoice = {
@@ -20,6 +21,7 @@ type Invoice = {
     description: string;
     billedMonth: string;
     lineTotalCents: number;
+    paidCents?: number | null;
     status?: "DUE" | "PAID" | "WAIVED";
     paidAt?: string | null;
     class?: { id: string; name: string };
@@ -46,6 +48,7 @@ export default function AdminBillingPage() {
   const genMut = useGenerateMonthly();
   const { download } = useInvoicePdf();
   const payMut = usePayInvoice(); // can accept studentId param but not needed here
+  const payItemMut = usePayInvoiceItem();
 
   // Modal state
   const [open, setOpen] = useState(false);
@@ -164,11 +167,7 @@ export default function AdminBillingPage() {
                             : "bg-yellow-100 text-yellow-800",
                         ].join(" ")}
                       >
-                        {inv.status === "PAID"
-                          ? "Paid"
-                          : inv.status === "OVERDUE"
-                          ? "Unpaid"
-                          : inv.status}
+                        {inv.status === "PAID" ? "Paid" : "Unpaid"}
                       </span>
                     </td>
 
@@ -253,7 +252,7 @@ export default function AdminBillingPage() {
                     : "bg-yellow-100 text-yellow-800",
                 ].join(" ")}
               >
-                {selected.status}
+                {selected.status === "PAID" ? "Paid" : "Unpaid"}
               </span>
             </div>
 
@@ -281,44 +280,64 @@ export default function AdminBillingPage() {
             <div>
               <div className="mb-2 text-sm text-gray-500">Items</div>
               <ul className="space-y-2">
-                {selected.items.map((it) => (
-                  <li
-                    key={it.id}
-                    className="flex items-center justify-between rounded border px-3 py-2"
-                  >
-                    <div className="min-w-0">
-                      <div className="truncate font-medium">
-                        {it.class?.name || it.description}
+                {selected.items.map((it) => {
+                  const remaining = it.lineTotalCents - (it.paidCents ?? 0);
+                  return (
+                    <li
+                      key={it.id}
+                      className="flex items-center justify-between rounded border px-3 py-2"
+                    >
+                      <div className="min-w-0">
+                        <div className="truncate font-medium">
+                          {it.class?.name || it.description}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {new Date(it.billedMonth).toLocaleDateString(
+                            undefined,
+                            {
+                              month: "long",
+                              year: "numeric",
+                            }
+                          )}
+                        </div>
                       </div>
-                      <div className="text-xs text-gray-500">
-                        {new Date(it.billedMonth).toLocaleDateString(
-                          undefined,
-                          {
-                            month: "long",
-                            year: "numeric",
-                          }
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm">
+                          {cc(it.lineTotalCents, selected.currency)}
+                        </span>
+                        <span
+                          className={[
+                            "px-2 py-0.5 rounded-full text-xs font-medium",
+                            it.status === "PAID"
+                              ? "bg-green-100 text-green-700"
+                              : it.status === "WAIVED"
+                              ? "bg-gray-200 text-gray-600"
+                              : "bg-yellow-100 text-yellow-800",
+                          ].join(" ")}
+                        >
+                          {it.status ?? "DUE"}
+                        </span>
+                        {it.status !== "PAID" && (
+                          <button
+                            className="px-3 py-1 rounded bg-indigo-600 text-white text-xs disabled:opacity-60"
+                            onClick={() =>
+                              payItemMut.mutate({
+                                invoiceId: selected.id,
+                                itemId: it.id,
+                                amountCents: remaining,
+                              })
+                            }
+                            disabled={payItemMut.isPending}
+                          >
+                            {payItemMut.isPending
+                              ? "Paying…"
+                              : `Pay ${cc(remaining, selected.currency)}`}
+                          </button>
                         )}
                       </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm">
-                        {cc(it.lineTotalCents, selected.currency)}
-                      </span>
-                      <span
-                        className={[
-                          "px-2 py-0.5 rounded-full text-xs font-medium",
-                          it.status === "PAID"
-                            ? "bg-green-100 text-green-700"
-                            : it.status === "WAIVED"
-                            ? "bg-gray-200 text-gray-600"
-                            : "bg-yellow-100 text-yellow-800",
-                        ].join(" ")}
-                      >
-                        {it.status ?? "DUE"}
-                      </span>
-                    </div>
-                  </li>
-                ))}
+                    </li>
+                  );
+                })}
               </ul>
             </div>
 

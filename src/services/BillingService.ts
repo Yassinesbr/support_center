@@ -1,5 +1,24 @@
 import api from "../api/axios";
 
+export type InvoiceItem = {
+  id: string;
+  description: string;
+  billedMonth: string;
+  lineTotalCents: number;
+  paidCents?: number | null;
+  status?: "DUE" | "PAID" | "WAIVED";
+  paidAt?: string | null;
+  class?: { id: string; name: string };
+};
+
+export type InvoicePayment = {
+  id: string;
+  amountCents: number;
+  paidAt: string;
+  method: string;
+  reference?: string | null;
+};
+
 export type Invoice = {
   id: string;
   number: string;
@@ -8,7 +27,8 @@ export type Invoice = {
   status: "DUE" | "PAID" | "OVERDUE" | "CANCELLED";
   currency: string;
   subtotalCents: number;
-  items: { id: string; class: { id: string; name: string } }[];
+  items: InvoiceItem[];
+  payments?: InvoicePayment[];
   student?: { user?: { firstName?: string; lastName?: string } };
 };
 
