@@ -1,3 +1,4 @@
+// src/app/pages/students/EnrollmentsCard.tsx
 import { useEffect, useMemo, useState } from "react";
 import Button from "../ui/button/Button";
 import Input from "../form/input/InputField";
@@ -5,6 +6,7 @@ import Checkbox from "../form/input/Checkbox";
 import Label from "../form/Label";
 import Badge from "../ui/badge/Badge";
 import api from "../../api/axios";
+import { useQueryClient } from "@tanstack/react-query";
 
 type Klass = { id: string; name: string };
 
@@ -19,8 +21,9 @@ export default function EnrollmentsCard({
   const [selected, setSelected] = useState<string[]>([]);
   const [q, setQ] = useState("");
   const [saving, setSaving] = useState(false);
+  const queryClient = useQueryClient(); // React Query client
 
-  // load all classes
+  // Load all classes
   useEffect(() => {
     (async () => {
       const { data } = await api.get("/classes");
@@ -28,10 +31,10 @@ export default function EnrollmentsCard({
     })();
   }, []);
 
-  // hydrate selected from props (when profile loads)
+  // Hydrate selected from props
   useEffect(() => {
     setSelected(initialSelectedIds ?? []);
-  }, [initialSelectedIds.join("|")]); // re-seed if it changes
+  }, [initialSelectedIds.join("|")]);
 
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
@@ -63,6 +66,11 @@ export default function EnrollmentsCard({
     setSaving(true);
     try {
       await api.put(`/students/${studentId}/classes`, { classIds: selected });
+
+      // Invalidate invoices query so StudentPaymentsTab refreshes
+      queryClient.invalidateQueries({
+        queryKey: ["invoices", studentId],
+      });
     } finally {
       setSaving(false);
     }
