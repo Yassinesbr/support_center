@@ -38,13 +38,7 @@ export class ClassesService {
     if (!teacher) throw new NotFoundException('Teacher not found');
 
     return this.prisma.class.create({
-      data: {
-        name: data.name,
-        description: data.description,
-        teacherId: data.teacherId,
-        startAt: new Date(data.startAt),
-        endAt: new Date(data.endAt),
-      },
+      data: { ...data },
       include: {
         teacher: { include: { user: true } },
         students: { include: { user: true } },
@@ -106,13 +100,7 @@ export class ClassesService {
 
     return this.prisma.class.update({
       where: { id },
-      data: {
-        name: data.name ?? undefined,
-        description: data.description ?? undefined,
-        teacherId: data.teacherId ?? undefined,
-        startAt: data.startAt ? new Date(data.startAt) : undefined,
-        endAt: data.endAt ? new Date(data.endAt) : undefined,
-      },
+      data: { ...data },
       include: {
         teacher: { include: { user: true } },
         students: { include: { user: true } },

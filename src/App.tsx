@@ -27,6 +27,7 @@ import Teachers from "./pages/Teachers/TeachersListPage";
 import TeacherProfilePage from "./pages/TeacherProfilePage/TeacherProfilePage";
 import ClassesListPage from "./pages/Classes/ClassesListPage";
 import ClassDetailsPage from "./pages/Classes/ClassDetailsPage";
+import AdminBillingPage from "./pages/Billing/AdminBillingPage";
 
 export default function App() {
   return (
@@ -55,6 +56,8 @@ export default function App() {
 
               <Route path="/classes" element={<ClassesListPage />} />
               <Route path="/classes/:classId" element={<ClassDetailsPage />} />
+
+              <Route path="/invoices" element={<AdminBillingPage />} />
 
               <Route path="/profile" element={<UserProfiles />} />
               <Route path="/calendar" element={<Calendar />} />

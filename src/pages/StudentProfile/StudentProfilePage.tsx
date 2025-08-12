@@ -1,12 +1,12 @@
 import { useParams } from "react-router";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import PageMeta from "../../components/common/PageMeta";
-import UserAddressCard from "../../components/UserProfile/UserAddressCard";
 import UserInfoCard from "../../components/UserProfile/UserInfoCard";
 import UserMetaCard from "../../components/UserProfile/UserMetaCard";
 import { useStudentProfile } from "../../hooks/useStudentProfile";
 import Loader from "../../components/Loader/Loader";
-import EnrollmentsCard from "../../components/Students/EnrollmentsCard";
+import EnrollmentsCard from "../../components/students/EnrollmentsCard";
+import StudentPaymentsTab from "./StudentPaymentsTab";
 
 export default function StudentProfilePage() {
   const { studentId } = useParams();
@@ -38,27 +38,22 @@ export default function StudentProfilePage() {
             phoneNumber={data.phone}
             profileAddress={data.address}
           />
-          <div className="flex flex-col lg:flex-row gap-6">
-            <div className="w-full lg:w-1/2">
-              <UserInfoCard
-                firstName={data.user.firstName}
-                lastName={data.user.lastName}
-                email={data.email}
-                birthDate={data.birthDate}
-                phone={data.phone}
-                parentName={data.parentName}
-                parentPhone={data.parentPhone}
-                enrollmentDate={data.enrollmentDate}
-                paymentStatus={data.paymentStatus}
-              />
-            </div>
-            <div className="w-full lg:w-1/2">
-              <EnrollmentsCard
-                studentId={data.id}
-                initialSelectedIds={(data.classes ?? []).map((c: any) => c.id)}
-              />
-            </div>
-          </div>
+          <UserInfoCard
+            firstName={data.user.firstName}
+            lastName={data.user.lastName}
+            email={data.email}
+            birthDate={data.birthDate}
+            phone={data.phone}
+            parentName={data.parentName}
+            parentPhone={data.parentPhone}
+            enrollmentDate={data.enrollmentDate}
+            paymentStatus={data.paymentStatus}
+          />
+          <EnrollmentsCard
+            studentId={data.id}
+            initialSelectedIds={(data.classes ?? []).map((c: any) => c.id)}
+          />
+          <StudentPaymentsTab studentId={data.id} />
         </div>
       </div>
     </>
