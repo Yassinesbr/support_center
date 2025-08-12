@@ -105,6 +105,95 @@ export class InvoicesService {
     return { month, created: results };
   }
 
+  /**
+   * Ensure the current month's invoice for a single student exists and
+   * includes all of their classes as items.
+   */
+  async ensureUpcomingInvoiceForStudent(studentId: string) {
+    const now = new Date();
+    const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(
+      2,
+      '0',
+    )}`;
+    const billedMonth = firstDay(month);
+    const dueDate = new Date(billedMonth);
+    dueDate.setDate(dueDate.getDate() + 10);
+
+    const student = await this.prisma.student.findUnique({
+      where: { id: studentId },
+      include: { classes: true },
+    });
+    if (!student || student.classes.length === 0) return;
+
+    let invoice = await this.prisma.invoice.findFirst({
+      where: { studentId, items: { some: { billedMonth } } },
+      include: { items: true },
+    });
+
+    if (invoice) {
+      const existingIds = new Set(invoice.items.map((i) => i.classId));
+      const toAdd = student.classes.filter((c) => !existingIds.has(c.id));
+      if (!toAdd.length) return invoice;
+
+      const newItems = toAdd.map((c) => ({
+        invoiceId: invoice!.id,
+        classId: c.id,
+        billedMonth,
+        description: `${c.name} - ${billedMonth.toLocaleString('default', {
+          month: 'long',
+          year: 'numeric',
+        })}`,
+        quantity: 1,
+        unitPriceCents: c.monthlyPriceCents ?? 0,
+        lineTotalCents: c.monthlyPriceCents ?? 0,
+      }));
+
+      await this.prisma.invoiceItem.createMany({ data: newItems });
+
+      const increment = newItems.reduce((s, i) => s + i.lineTotalCents, 0);
+      invoice = await this.prisma.invoice.update({
+        where: { id: invoice.id },
+        data: { subtotalCents: { increment } },
+        include: { items: true },
+      });
+
+      return invoice;
+    } else {
+      const items = student.classes.map((c) => ({
+        classId: c.id,
+        billedMonth,
+        description: `${c.name} - ${billedMonth.toLocaleString('default', {
+          month: 'long',
+          year: 'numeric',
+        })}`,
+        quantity: 1,
+        unitPriceCents: c.monthlyPriceCents ?? 0,
+        lineTotalCents: c.monthlyPriceCents ?? 0,
+      }));
+
+      const subtotal = items.reduce((t, i) => t + i.lineTotalCents, 0);
+      const seq = Math.floor(Math.random() * 9000) + 1000;
+      const number = `INV-${billedMonth.getFullYear()}-${String(
+        billedMonth.getMonth() + 1,
+      ).padStart(2, '0')}-${seq}`;
+
+      invoice = await this.prisma.invoice.create({
+        data: {
+          number,
+          studentId,
+          issueDate: new Date(),
+          dueDate,
+          status: InvoiceStatus.DUE,
+          subtotalCents: subtotal,
+          items: { create: items },
+        },
+        include: { items: true },
+      });
+
+      return invoice;
+    }
+  }
+
   async payInvoice(
     id: string,
     dto: { amountCents: number; method?: string; reference?: string },

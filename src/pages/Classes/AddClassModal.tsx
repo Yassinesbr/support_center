@@ -29,6 +29,7 @@ export default function AddClassModal({
   const [teacherId, setTeacherId] = useState("");
   const [startAt, setStartAt] = useState("");
   const [endAt, setEndAt] = useState("");
+  const [price, setPrice] = useState("");
   const [teachers, setTeachers] = useState<{ value: string; label: string }[]>(
     []
   );
@@ -55,12 +56,18 @@ export default function AddClassModal({
       setTeacherId(initial.teacher?.id ?? "");
       setStartAt(initial.startAt ? initial.startAt.substring(0, 16) : "");
       setEndAt(initial.endAt ? initial.endAt.substring(0, 16) : "");
+      setPrice(
+        initial.monthlyPriceCents !== undefined
+          ? (initial.monthlyPriceCents / 100).toString()
+          : ""
+      );
     } else {
       setName("");
       setDescription("");
       setTeacherId("");
       setStartAt("");
       setEndAt("");
+      setPrice("");
     }
   }, [initial, open]);
 
@@ -71,6 +78,8 @@ export default function AddClassModal({
       teacherId,
       startAt: startAt ? new Date(startAt).toISOString() : undefined,
       endAt: endAt ? new Date(endAt).toISOString() : undefined,
+      monthlyPriceCents:
+        price.trim() !== "" ? Math.round(parseFloat(price) * 100) : undefined,
     };
     const isEdit = !!initial?.id;
     const data = isEdit
@@ -109,6 +118,18 @@ export default function AddClassModal({
             placeholder="Choose a teacher"
             defaultValue={teacherId}
             onChange={(v) => setTeacherId(v)}
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium mb-1">
+            Monthly price (MAD)
+          </label>
+          <input
+            type="number"
+            step="0.01"
+            className="w-full rounded-lg border px-3 py-2"
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
           />
         </div>
         <div className="grid sm:grid-cols-2 gap-4">

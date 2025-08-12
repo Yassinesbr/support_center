@@ -22,6 +22,7 @@ export type ClassRow = {
   startAt?: string;
   endAt?: string;
   classTimes?: ClassTime[];
+  monthlyPriceCents?: number;
 };
 
 export const useClasses = () =>

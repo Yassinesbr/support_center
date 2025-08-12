@@ -4,13 +4,17 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma.service';
+import { InvoicesService } from '../billing/invoices.service';
 import { UpdateStudentDto } from './dto/update-student.dto';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 
 @Injectable()
 export class StudentsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private invoices: InvoicesService,
+  ) {}
 
   async getOne(id: string) {
     return this.prisma.student.findUnique({
@@ -31,7 +35,7 @@ export class StudentsService {
     const validIds = new Set(existing.map((c) => c.id));
     const cleaned = classIds.filter((id) => validIds.has(id));
 
-    return this.prisma.student.update({
+    const updated = await this.prisma.student.update({
       where: { id: studentId },
       data: {
         classes: {
@@ -43,14 +47,20 @@ export class StudentsService {
         classes: { select: { id: true, name: true } },
       },
     });
+
+    await this.invoices.ensureUpcomingInvoiceForStudent(studentId);
+
+    return updated;
   }
 
   async addClass(studentId: string, classId: string) {
-    return this.prisma.student.update({
+    const updated = await this.prisma.student.update({
       where: { id: studentId },
       data: { classes: { connect: { id: classId } } },
       include: { classes: { select: { id: true, name: true } } },
     });
+    await this.invoices.ensureUpcomingInvoiceForStudent(studentId);
+    return updated;
   }
   async removeClass(studentId: string, classId: string) {
     return this.prisma.student.update({

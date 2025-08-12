@@ -71,6 +71,7 @@ export default function EnrollmentsCard({
       queryClient.invalidateQueries({
         queryKey: ["invoices", studentId],
       });
+      queryClient.invalidateQueries({ queryKey: ["invoices", "all"] });
     } finally {
       setSaving(false);
     }
