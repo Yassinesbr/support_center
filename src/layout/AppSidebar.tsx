@@ -7,18 +7,15 @@ import {
   CalenderIcon,
   ChevronDownIcon,
   ClassIcon,
+  DocsIcon,
   GridIcon,
   HorizontaLDots,
-  ListIcon,
-  PageIcon,
   PieChartIcon,
   PlugInIcon,
-  TableIcon,
   UserCircleIcon,
   UserGraduateIcon,
 } from "../icons";
 import { useSidebar } from "../context/SidebarContext";
-import SidebarWidget from "./SidebarWidget";
 import ClassPort from "../assets/logo-full.png";
 import Logo from "../assets/logo.png";
 
@@ -54,6 +51,12 @@ const navItems: NavItem[] = [
     icon: <CalenderIcon />,
     name: "Calendar",
     path: "/calendar",
+  },
+
+  {
+    icon: <DocsIcon />,
+    name: "Invoices",
+    path: "/invoices",
   },
   // {
   //   icon: <UserCircleIcon />,

@@ -1,5 +1,6 @@
 export default function UserInfoCard({
-  name,
+  firstName,
+  lastName,
   email,
   birthDate,
   phone,
@@ -8,7 +9,8 @@ export default function UserInfoCard({
   enrollmentDate,
   paymentStatus,
 }: {
-  name: string;
+  firstName: string;
+  lastName: string;
   email: string;
   birthDate: string;
   phone: string;
@@ -30,7 +32,7 @@ export default function UserInfoCard({
                 Name
               </p>
               <p className="text-sm font-medium text-gray-800 dark:text-white/90">
-                {name}
+                {firstName} {lastName}
               </p>
             </div>
             <div>
