@@ -25,14 +25,21 @@ export class ClassesService {
   }
 
   async findOne(id: string) {
-    return this.prisma.class.findUnique({
+    const klass = await this.prisma.class.findUnique({
       where: { id },
       include: {
         teacher: { include: { user: true } },
         students: { include: { user: true } },
-        classTimes: true, // new relation
+        classTimes: true,
       },
     });
+    if (!klass) throw new NotFoundException('Class not found');
+
+    // compute total monthly income: price per student * number of students
+    const totalMonthlyIncomeCents =
+      (klass.monthlyPriceCents ?? 0) * (klass.students?.length ?? 0);
+
+    return { ...klass, totalMonthlyIncomeCents };
   }
 
   async create(data: CreateClassDto) {

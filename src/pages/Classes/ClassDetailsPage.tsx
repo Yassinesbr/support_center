@@ -11,6 +11,7 @@ import {
   useDeleteClassTime,
 } from "../../hooks/useClasses";
 import { useState } from "react";
+import React from "react";
 
 const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const mm = (m: number) =>
@@ -22,6 +23,15 @@ const toMinutes = (hhmm: string) => {
   const [h, m] = hhmm.split(":").map(Number);
   return (h * 60 + (m || 0)) | 0;
 };
+
+// Helper to format cents to currency
+function formatCents(cents?: number) {
+  const v = cents ?? 0;
+  return (v / 100).toLocaleString(undefined, {
+    style: "currency",
+    currency: "USD",
+  });
+}
 
 export default function ClassDetailsPage() {
   const { classId } = useParams();
@@ -202,6 +212,21 @@ export default function ClassDetailsPage() {
         onClose={() => setEditOpen(false)}
         initial={data}
       />
+
+      {/* Billing section */}
+      <section className="mt-8 rounded-xl bg-white dark:bg-gray-900 p-4 shadow-sm border border-gray-200/60 dark:border-gray-800">
+        <h3 className="text-lg font-semibold mb-4">Billing</h3>
+        <div className="grid grid-cols-2 gap-4 text-sm">
+          <div>
+            <strong>Price per student:</strong>{" "}
+            {formatCents(data.monthlyPriceCents)}
+          </div>
+          <div>
+            <strong>Total monthly income:</strong>{" "}
+            {formatCents(data.totalMonthlyIncomeCents)}
+          </div>
+        </div>
+      </section>
     </>
   );
 }
