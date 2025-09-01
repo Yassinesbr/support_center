@@ -4,7 +4,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma.service';
-import { InvoicesService } from '../billing/invoices.service';
+import { InvoicesService } from 'src/billing/invoices.service';
 import { UpdateStudentDto } from './dto/update-student.dto';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
@@ -21,7 +21,7 @@ export class StudentsService {
       where: { id },
       include: {
         user: true,
-        classes: { select: { id: true, name: true } },
+        classes: { select: { id: true, name: true, monthlyPriceCents: true } },
       },
     });
   }
@@ -44,12 +44,11 @@ export class StudentsService {
       },
       include: {
         user: true,
-        classes: { select: { id: true, name: true } },
+        classes: { select: { id: true, name: true, monthlyPriceCents: true } },
       },
     });
 
     await this.invoices.ensureUpcomingInvoiceForStudent(studentId);
-
     return updated;
   }
 
@@ -57,46 +56,82 @@ export class StudentsService {
     const updated = await this.prisma.student.update({
       where: { id: studentId },
       data: { classes: { connect: { id: classId } } },
-      include: { classes: { select: { id: true, name: true } } },
+      include: { classes: true, user: true },
     });
     await this.invoices.ensureUpcomingInvoiceForStudent(studentId);
-    return updated;
+    const monthlyTotalCents =
+      updated.classes.reduce((s, c) => s + (c.monthlyPriceCents ?? 0), 0) ?? 0;
+    return { ...updated, monthlyTotalCents };
   }
+
   async removeClass(studentId: string, classId: string) {
-    return this.prisma.student.update({
+    const updated = await this.prisma.student.update({
       where: { id: studentId },
       data: { classes: { disconnect: { id: classId } } },
-      include: { classes: { select: { id: true, name: true } } },
+      include: { classes: true, user: true },
     });
+    await this.invoices.ensureUpcomingInvoiceForStudent(studentId);
+    const monthlyTotalCents =
+      updated.classes.reduce((s, c) => s + (c.monthlyPriceCents ?? 0), 0) ?? 0;
+    return { ...updated, monthlyTotalCents };
   }
 
   findAll(search?: string) {
-    return this.prisma.student.findMany({
-      where: search
-        ? {
-            OR: [
-              {
-                user: { firstName: { contains: search, mode: 'insensitive' } },
-              },
-              { user: { lastName: { contains: search, mode: 'insensitive' } } },
-              { user: { email: { contains: search, mode: 'insensitive' } } },
-              { phone: { contains: search, mode: 'insensitive' } },
-              { parentName: { contains: search, mode: 'insensitive' } },
-            ],
-          }
-        : undefined,
-      include: { user: true },
-    });
+    return this.prisma.student
+      .findMany({
+        where: search
+          ? {
+              OR: [
+                {
+                  user: {
+                    firstName: { contains: search, mode: 'insensitive' },
+                  },
+                },
+                {
+                  user: {
+                    lastName: { contains: search, mode: 'insensitive' },
+                  },
+                },
+                {
+                  user: {
+                    email: { contains: search, mode: 'insensitive' },
+                  },
+                },
+              ],
+            }
+          : undefined,
+        include: {
+          user: true,
+          classes: {
+            select: { id: true, name: true, monthlyPriceCents: true },
+          },
+        },
+      })
+      .then((rows) =>
+        rows.map((s) => ({
+          ...s,
+          monthlyTotalCents: s.classes.reduce(
+            (sum, c) => sum + (c.monthlyPriceCents ?? 0),
+            0,
+          ),
+        })),
+      );
   }
 
   async findOne(id: string) {
-    return this.prisma.student.findUnique({
+    const s = await this.prisma.student.findUnique({
       where: { id },
       include: {
         user: true,
-        classes: { select: { id: true, name: true } }, // <-- add this
+        classes: { select: { id: true, name: true, monthlyPriceCents: true } },
       },
     });
+    if (!s) throw new NotFoundException('Student not found');
+    const monthlyTotalCents = s.classes.reduce(
+      (sum, c) => sum + (c.monthlyPriceCents ?? 0),
+      0,
+    );
+    return { ...s, monthlyTotalCents };
   }
 
   /**

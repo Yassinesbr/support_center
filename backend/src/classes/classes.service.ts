@@ -4,10 +4,14 @@ import { CreateClassDto } from './dto/create-class.dto';
 import { UpdateClassDto } from './dto/update-class.dto';
 import { CreateClassTimeDto } from './dto/create-class-time.dto';
 import { UpdateClassTimeDto } from './dto/update-class-time.dto';
+import { InvoicesService } from 'src/billing/invoices.service';
 
 @Injectable()
 export class ClassesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private invoices: InvoicesService,
+  ) {}
 
   async findAll() {
     return this.prisma.class.findMany({
@@ -47,28 +51,23 @@ export class ClassesService {
   }
 
   async addStudent(classId: string, studentId: string) {
-    // Check class exists
-    const classObj = await this.prisma.class.findUnique({
+    const res = await this.prisma.class.update({
       where: { id: classId },
+      data: { students: { connect: { id: studentId } } },
+      include: { students: true },
     });
-    if (!classObj) throw new NotFoundException('Class not found');
+    await this.invoices.ensureUpcomingInvoiceForStudent(studentId);
+    return res;
+  }
 
-    // Check student exists
-    const student = await this.prisma.student.findUnique({
-      where: { id: studentId },
-    });
-    if (!student) throw new NotFoundException('Student not found');
-
-    return this.prisma.class.update({
+  async removeStudent(classId: string, studentId: string) {
+    const res = await this.prisma.class.update({
       where: { id: classId },
-      data: {
-        students: { connect: { id: studentId } },
-      },
-      include: {
-        teacher: { include: { user: true } },
-        students: { include: { user: true } },
-      },
+      data: { students: { disconnect: { id: studentId } } },
+      include: { students: true },
     });
+    await this.invoices.ensureUpcomingInvoiceForStudent(studentId);
+    return res;
   }
 
   async addTeacher(classId: string, teacherId: string) {

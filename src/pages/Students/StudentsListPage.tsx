@@ -80,6 +80,16 @@ export default function StudentsListPage() {
             : "-",
       },
       {
+        header: "Monthly",
+        accessorKey: "monthlyTotalCents",
+        enableSort: true,
+        align: "right",
+        cell: ({ row }) =>
+          typeof row.monthlyTotalCents === "number"
+            ? `${(row.monthlyTotalCents / 100).toFixed(2)} MAD`
+            : "-",
+      },
+      {
         header: "Payment",
         accessorKey: "paymentStatus",
         enableSort: true,

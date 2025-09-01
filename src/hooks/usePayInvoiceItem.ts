@@ -26,7 +26,13 @@ export function usePayInvoiceItem(studentId?: string) {
         })
         .then((r) => r.data),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["invoices", studentId ?? "all"] });
+      qc.invalidateQueries({ queryKey: ["students"] });
+      if (studentId) {
+        qc.invalidateQueries({ queryKey: ["student", studentId] });
+        qc.invalidateQueries({ queryKey: ["invoices", studentId] });
+      } else {
+        qc.invalidateQueries({ queryKey: ["invoices"] });
+      }
     },
   });
 }

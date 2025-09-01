@@ -22,6 +22,7 @@ interface Student {
   parentPhone: string;
   enrollmentDate: string;
   paymentStatus: string;
+  monthlyTotalCents?: number; // <-- add this
   user: {
     id: string;
     firstName: string;
@@ -82,6 +83,12 @@ export default function StudentsList({ search }: { search: string }) {
                   isHeader
                   className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
                 >
+                  Monthly
+                </TableCell>
+                <TableCell
+                  isHeader
+                  className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
+                >
                   Payment Status
                 </TableCell>
                 <TableCell
@@ -130,10 +137,14 @@ export default function StudentsList({ search }: { search: string }) {
                     <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
                       {student.parentName}
                     </TableCell>
-                    <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
+                    <TableCell className="px-4 py-3 text-gray-900 text-theme-sm dark:text-gray-100">
+                      {(student.monthlyTotalCents
+                        ? (student.monthlyTotalCents / 100).toFixed(2)
+                        : "0.00") + " MAD"}
+                    </TableCell>
+                    <TableCell className="px-4 py-3">
                       <Badge
-                        variant="light"
-                        color={
+                        variant={
                           student.paymentStatus === "paid"
                             ? "success"
                             : student.paymentStatus === "partial"
