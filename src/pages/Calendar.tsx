@@ -35,10 +35,6 @@ type ClassRow = {
   classTimes?: ClassTime[];
 };
 
-const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const pad2 = (n: number) => String(n).padStart(2, "0");
-const mmToHHMM = (mins: number) =>
-  `${pad2(Math.floor(mins / 60))}:${pad2(mins % 60)}`;
 const setHM = (d: Date, minutes: number) => {
   const x = new Date(d);
   x.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0);
@@ -125,9 +121,6 @@ const Calendar: React.FC = () => {
           if (courseStart && e < courseStart) continue;
           if (courseEnd && s > courseEnd) continue;
 
-          const label = `${cls.name} — ${dayNames[t.dayOfWeek]} ${mmToHHMM(
-            t.startMinutes
-          )}–${mmToHHMM(t.endMinutes)}`;
           out.push({
             id: `${cls.id}-${t.id}-${+s}`, // any unique id is fine
             title: cls.name, // ⬅️ title only, like “test event”

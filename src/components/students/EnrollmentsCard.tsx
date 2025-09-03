@@ -12,7 +12,7 @@ import {
 } from "../../services/StudentPricingService";
 import { useQueryClient } from "@tanstack/react-query";
 
-type Klass = { id: string; name: string };
+type Klass = { id: string; name: string; priceOverrideCents?: number };
 
 export default function EnrollmentsCard({
   studentId,
@@ -78,31 +78,6 @@ export default function EnrollmentsCard({
       queryClient.invalidateQueries({ queryKey: ["invoices", "all"] });
     } finally {
       setSaving(false);
-    }
-  };
-
-  // Make sure we're invalidating invoices after setting price overrides
-  const handlePriceOverride = async (classId: string, value: string) => {
-    const cents =
-      value.trim() === "" ? undefined : Math.round(parseFloat(value) * 100);
-
-    try {
-      if (cents === undefined) {
-        await clearStudentClassPriceOverride(studentId, classId);
-      } else {
-        await setStudentClassPriceOverride(studentId, classId, cents);
-      }
-
-      // Invalidate invoices query to refresh billing data
-      queryClient.invalidateQueries({
-        queryKey: ["invoices", studentId],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["invoices", "all"],
-      });
-    } catch (err) {
-      console.error("Failed to update price override:", err);
-      // Handle error (show toast, etc.)
     }
   };
 

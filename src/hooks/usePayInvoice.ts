@@ -11,7 +11,7 @@ export function usePayInvoice(studentId?: string) {
       reference,
     }: {
       id: string;
-      amountCents?: number;
+      amountCents: number;
       method?: string;
       reference?: string;
     }) => payInvoice(id, { amountCents, method, reference }),
