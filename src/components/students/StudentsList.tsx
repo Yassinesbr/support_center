@@ -1,6 +1,5 @@
-import React, { useState } from "react";
-import { useStudents } from "../../hooks/useStudents";
 import { useNavigate } from "react-router";
+import { useStudents, StudentRow } from "../../hooks/useStudents";
 import {
   Table,
   TableBody,
@@ -12,32 +11,10 @@ import Avatar from "../ui/avatar/Avatar";
 import Badge from "../ui/badge/Badge";
 import Loader from "../Loader/Loader";
 
-interface Student {
-  id: string;
-  userId: string;
-  birthDate: string;
-  address: string;
-  phone: string;
-  parentName: string;
-  parentPhone: string;
-  enrollmentDate: string;
-  paymentStatus: string;
-  monthlyTotalCents?: number; // <-- add this
-  user: {
-    id: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-    role: string;
-    createdAt: string;
-    updatedAt: string;
-  };
-}
-
 export default function StudentsList({ search }: { search: string }) {
   const navigate = useNavigate();
   const { data, isLoading, error } = useStudents(search);
-  const studentsList: Student[] = data ?? [];
+  const studentsList: StudentRow[] = data ?? [];
 
   if (isLoading)
     return (
@@ -117,19 +94,19 @@ export default function StudentsList({ search }: { search: string }) {
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 overflow-hidden rounded-full">
                           <Avatar
-                            alt={`${student.user.firstName} ${student.user.lastName}`}
-                            firstName={student.user.firstName}
-                            lastName={student.user.lastName}
+                            alt={`${student.user?.firstName ?? ""} ${student.user?.lastName ?? ""}`}
+                            firstName={student.user?.firstName}
+                            lastName={student.user?.lastName}
                             size="medium"
                           />
                         </div>
                         <span className="block font-medium text-gray-800 text-theme-sm dark:text-white/90">
-                          {student.user.firstName} {student.user.lastName}
+                          {student.user?.firstName} {student.user?.lastName}
                         </span>
                       </div>
                     </TableCell>
                     <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
-                      {student.user.email}
+                      {student.user?.email}
                     </TableCell>
                     <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
                       {student.phone}
@@ -144,7 +121,7 @@ export default function StudentsList({ search }: { search: string }) {
                     </TableCell>
                     <TableCell className="px-4 py-3">
                       <Badge
-                        variant={
+                        color={
                           student.paymentStatus === "paid"
                             ? "success"
                             : student.paymentStatus === "partial"
@@ -152,14 +129,18 @@ export default function StudentsList({ search }: { search: string }) {
                             : "error"
                         }
                       >
-                        {student.paymentStatus.charAt(0).toUpperCase() +
-                          student.paymentStatus.slice(1)}
+                        {(student.paymentStatus ?? "")
+                          .charAt(0)
+                          .toUpperCase() +
+                          (student.paymentStatus ?? "").slice(1)}
                       </Badge>
                     </TableCell>
                     <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
-                      {new Date(student.enrollmentDate).toLocaleDateString(
-                        "en-GB"
-                      )}
+                      {student.enrollmentDate
+                        ? new Date(student.enrollmentDate).toLocaleDateString(
+                            "en-GB",
+                          )
+                        : "-"}
                     </TableCell>
                   </TableRow>
                 ))

@@ -13,7 +13,7 @@ export default function StudentPaymentsTab({
 }: {
   studentId: string;
 }) {
-  const { data: invoices = [], isLoading, refetch } = useInvoices(studentId);
+  const { data: invoices = [], isLoading } = useInvoices(studentId);
   const payInvoiceMut = usePayInvoice(studentId);
   const payItemMut = usePayInvoiceItem(studentId);
   const { download } = useInvoicePdf();
@@ -157,8 +157,8 @@ export default function StudentPaymentsTab({
             <div>
               <div className="mb-2 text-sm text-gray-500">Classes</div>
               <ul className="space-y-2">
-                {selected.items.map((it) => {
-                  const remaining = it.lineTotalCents - (it.paidCents ?? 0);
+            {selected.items.map((it: any) => {
+              const remaining = it.lineTotalCents - (it.paidCents ?? 0);
                   return (
                     <li
                       key={it.id}
@@ -217,7 +217,7 @@ export default function StudentPaymentsTab({
 
             {/* Pay all button */}
             {selected.status !== "PAID" &&
-              selected.items.some((it) => it.status !== "PAID") && (
+              selected.items.some((it: any) => it.status !== "PAID") && (
                 <div className="flex justify-end">
                   <button
                     className="px-4 py-2 rounded bg-indigo-600 text-white disabled:opacity-60"

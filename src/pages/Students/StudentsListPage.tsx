@@ -12,6 +12,7 @@ type StudentRow = {
   phone?: string;
   enrollmentDate?: string;
   paymentStatus?: string;
+  monthlyTotalCents?: number;
 };
 
 export default function StudentsListPage() {
@@ -136,7 +137,7 @@ export default function StudentsListPage() {
         sort={{ sortBy, sortDir }}
         onSortChange={({ sortBy, sortDir }) => {
           setSortBy(sortBy ?? null);
-          setSortDir(sortDir);
+           setSortDir(sortDir ?? null);
           setPage(1);
         }}
         pagination={{ page, pageSize, total }}

@@ -1,6 +1,5 @@
 // src/pages/Teachers/TeachersListPage.tsx
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router";
 import api from "../../api/axios";
 import DataTable, { ColumnDef } from "../../components/DataTable/DataTable";
 import AddTeacherModal from "./AddTeacherModal";
@@ -120,7 +119,7 @@ export default function TeachersListPage() {
         sort={{ sortBy, sortDir }}
         onSortChange={({ sortBy, sortDir }) => {
           setSortBy(sortBy ?? null);
-          setSortDir(sortDir);
+          setSortDir(sortDir ?? null);
           setPage(1);
         }}
         pagination={{ page, pageSize, total }}

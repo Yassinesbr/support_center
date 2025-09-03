@@ -23,6 +23,9 @@ export type ClassRow = {
   endAt?: string;
   classTimes?: ClassTime[];
   monthlyPriceCents?: number;
+  pricingMode?: "PER_STUDENT" | "FIXED_TOTAL";
+  fixedMonthlyPriceCents?: number;
+  teacherFixedMonthlyPayCents?: number;
 };
 
 export const useClasses = () =>

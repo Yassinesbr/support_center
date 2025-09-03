@@ -17,9 +17,19 @@ export default function UserProfiles() {
           Profile
         </h3>
         <div className="space-y-6">
-          <UserMetaCard />
-          <UserInfoCard />
-          <UserAddressCard />
+          <UserMetaCard firstName="" lastName="" email="" />
+          <UserInfoCard
+            firstName=""
+            lastName=""
+            email=""
+            birthDate=""
+            phone=""
+            parentName=""
+            parentPhone=""
+            enrollmentDate=""
+            paymentStatus=""
+          />
+          <UserAddressCard address="" />
         </div>
       </div>
     </>

@@ -11,7 +11,6 @@ import {
   useDeleteClassTime,
 } from "../../hooks/useClasses";
 import { useState } from "react";
-import React from "react";
 
 const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const mm = (m: number) =>
@@ -39,7 +38,6 @@ export default function ClassDetailsPage() {
   const { data, isLoading } = useClass(classId);
   const { data: times } = useClassTimes(classId);
   const delClass = useDeleteClass();
-  const addTime = useAddClassTime();
   const updTime = useUpdateClassTime();
   const remTime = useDeleteClassTime();
 
@@ -56,8 +54,8 @@ export default function ClassDetailsPage() {
 
   return (
     <>
-      <PageMeta title={data.name} />
-      <PageBreadCrumb title={data.name} subTitle="Class details" />
+      <PageMeta title={data.name} description={data.description ?? ""} />
+      <PageBreadCrumb pageTitle={data.name} />
 
       <div className="grid gap-6 md:grid-cols-3">
         {/* Left column */}

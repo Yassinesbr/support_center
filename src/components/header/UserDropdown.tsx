@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { DropdownItem } from "../ui/dropdown/DropdownItem";
 import { Dropdown } from "../ui/dropdown/Dropdown";
-import { Link, Navigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 
 export default function UserDropdown() {
   const [isOpen, setIsOpen] = useState(false);
+  const navigate = useNavigate();
 
   function toggleDropdown() {
     setIsOpen(!isOpen);
@@ -17,7 +18,7 @@ export default function UserDropdown() {
   const handleSignOut = () => {
     localStorage.removeItem("token");
     // Optionally clear additional user/app state here
-    Navigate("/signin");
+    navigate("/signin");
   };
   return (
     <div className="relative">

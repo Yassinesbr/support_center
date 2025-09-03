@@ -11,14 +11,14 @@ import {
 type Props = {
   open: boolean;
   onClose: () => void;
-  onSaved?: (id: string) => void;
+  onCreated?: () => void;
   initial?: ClassRow | null; // if set => edit mode
 };
 
 export default function AddClassModal({
   open,
   onClose,
-  onSaved,
+  onCreated,
   initial,
 }: Props) {
   const createClass = useCreateClass();
@@ -121,7 +121,7 @@ export default function AddClassModal({
       } else {
         await createClass.mutateAsync(payload);
       }
-      onSaved?.();
+      onCreated?.();
       onClose();
     } catch (err) {
       console.error("Failed to save class:", err);

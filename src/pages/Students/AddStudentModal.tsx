@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Modal } from "../../components/ui/Modal"; // <-- your modal path
+import { Modal } from "../../components/ui/modal"; // corrected path
 import api from "../../api/axios";
 
 type Props = {

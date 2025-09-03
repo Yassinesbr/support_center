@@ -131,7 +131,7 @@ export default function ClassesListPage() {
         sort={{ sortBy, sortDir }}
         onSortChange={({ sortBy, sortDir }) => {
           setSortBy(sortBy ?? null);
-          setSortDir(sortDir);
+          setSortDir(sortDir ?? null);
           setPage(1);
         }}
         pagination={{ page, pageSize, total }}
