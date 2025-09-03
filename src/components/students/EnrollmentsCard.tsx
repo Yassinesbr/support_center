@@ -6,6 +6,10 @@ import Checkbox from "../form/input/Checkbox";
 import Label from "../form/Label";
 import Badge from "../ui/badge/Badge";
 import api from "../../api/axios";
+import {
+  setStudentClassPriceOverride,
+  clearStudentClassPriceOverride,
+} from "../../services/StudentPricingService";
 import { useQueryClient } from "@tanstack/react-query";
 
 type Klass = { id: string; name: string };
@@ -74,6 +78,31 @@ export default function EnrollmentsCard({
       queryClient.invalidateQueries({ queryKey: ["invoices", "all"] });
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Make sure we're invalidating invoices after setting price overrides
+  const handlePriceOverride = async (classId: string, value: string) => {
+    const cents =
+      value.trim() === "" ? undefined : Math.round(parseFloat(value) * 100);
+
+    try {
+      if (cents === undefined) {
+        await clearStudentClassPriceOverride(studentId, classId);
+      } else {
+        await setStudentClassPriceOverride(studentId, classId, cents);
+      }
+
+      // Invalidate invoices query to refresh billing data
+      queryClient.invalidateQueries({
+        queryKey: ["invoices", studentId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["invoices", "all"],
+      });
+    } catch (err) {
+      console.error("Failed to update price override:", err);
+      // Handle error (show toast, etc.)
     }
   };
 
@@ -168,6 +197,49 @@ export default function EnrollmentsCard({
             No classes found
           </div>
         )}
+      </div>
+
+      {/* Price Override Inputs - Add this section */}
+      <div className="mt-4">
+        <Label>Custom Pricing (MAD)</Label>
+        {filtered.map((c) => (
+          <div key={c.id} className="flex items-center gap-2 py-2">
+            <span className="block w-32 text-sm font-medium text-gray-700 dark:text-gray-300">
+              {c.name}
+            </span>
+            <input
+              className="w-28 rounded border p-1 text-sm"
+              placeholder="Custom MAD"
+              inputMode="decimal"
+              defaultValue={
+                c.priceOverrideCents != null
+                  ? (c.priceOverrideCents / 100).toString()
+                  : ""
+              }
+              onBlur={async (e) => {
+                const v = e.currentTarget.value.trim();
+                const cents =
+                  v === "" ? undefined : Math.round(parseFloat(v) * 100);
+                try {
+                  if (cents === undefined) {
+                    await clearStudentClassPriceOverride(studentId, c.id);
+                  } else {
+                    await setStudentClassPriceOverride(studentId, c.id, cents);
+                  }
+                } finally {
+                  // Invalidate invoices query so StudentPaymentsTab refreshes
+                  queryClient.invalidateQueries({
+                    queryKey: ["invoices", studentId],
+                  });
+                  queryClient.invalidateQueries({
+                    queryKey: ["invoices", "all"],
+                  });
+                }
+              }}
+              title="Set a custom monthly price for this student in this class (leave empty to clear)"
+            />
+          </div>
+        ))}
       </div>
     </div>
   );

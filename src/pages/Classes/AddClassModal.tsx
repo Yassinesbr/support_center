@@ -30,6 +30,11 @@ export default function AddClassModal({
   const [startAt, setStartAt] = useState("");
   const [endAt, setEndAt] = useState("");
   const [price, setPrice] = useState("");
+  const [pricingMode, setPricingMode] = useState<"PER_STUDENT" | "FIXED_TOTAL">(
+    "PER_STUDENT"
+  );
+  const [fixedPrice, setFixedPrice] = useState("");
+  const [teacherPay, setTeacherPay] = useState("");
   const [teachers, setTeachers] = useState<{ value: string; label: string }[]>(
     []
   );
@@ -61,6 +66,18 @@ export default function AddClassModal({
           ? (initial.monthlyPriceCents / 100).toString()
           : ""
       );
+      // hydrate new fields when editing
+      setPricingMode((initial as any)?.pricingMode ?? "PER_STUDENT");
+      setFixedPrice(
+        (initial as any)?.fixedMonthlyPriceCents !== undefined
+          ? ((initial as any).fixedMonthlyPriceCents / 100).toString()
+          : ""
+      );
+      setTeacherPay(
+        (initial as any)?.teacherFixedMonthlyPayCents !== undefined
+          ? ((initial as any).teacherFixedMonthlyPayCents / 100).toString()
+          : ""
+      );
     } else {
       setName("");
       setDescription("");
@@ -71,6 +88,7 @@ export default function AddClassModal({
     }
   }, [initial, open]);
 
+  // In the onSubmit function, ensure we're submitting all pricing data:
   const onSubmit = async () => {
     const payload = {
       name,
@@ -78,15 +96,37 @@ export default function AddClassModal({
       teacherId,
       startAt: startAt ? new Date(startAt).toISOString() : undefined,
       endAt: endAt ? new Date(endAt).toISOString() : undefined,
-      monthlyPriceCents:
-        price.trim() !== "" ? Math.round(parseFloat(price) * 100) : undefined,
+      pricingMode,
+      // Based on pricing mode, include appropriate price
+      ...(pricingMode === "PER_STUDENT"
+        ? { monthlyPriceCents: price ? Math.round(parseFloat(price) * 100) : 0 }
+        : {
+            fixedMonthlyPriceCents: fixedPrice
+              ? Math.round(parseFloat(fixedPrice) * 100)
+              : 0,
+          }),
+      // Include teacher fixed pay if provided
+      ...(teacherPay
+        ? {
+            teacherFixedMonthlyPayCents: Math.round(
+              parseFloat(teacherPay) * 100
+            ),
+          }
+        : {}),
     };
-    const isEdit = !!initial?.id;
-    const data = isEdit
-      ? await updateClass.mutateAsync({ id: initial!.id, data: payload })
-      : await createClass.mutateAsync(payload);
-    onSaved?.(data.id);
-    onClose();
+
+    try {
+      if (initial) {
+        await updateClass.mutateAsync({ id: initial.id, data: payload });
+      } else {
+        await createClass.mutateAsync(payload);
+      }
+      onSaved?.();
+      onClose();
+    } catch (err) {
+      console.error("Failed to save class:", err);
+      // Handle error (show toast, etc.)
+    }
   };
 
   return (
@@ -120,19 +160,62 @@ export default function AddClassModal({
             onChange={(v) => setTeacherId(v)}
           />
         </div>
-        <div>
-          <label className="block text-xs font-medium mb-1">
-            Monthly price (MAD)
+        <div className="mb-4">
+          <label className="mb-2 block text-sm">Pricing mode</label>
+          <select
+            className="w-full rounded border p-2"
+            value={pricingMode}
+            onChange={(e) => setPricingMode(e.target.value as any)}
+          >
+            <option value="PER_STUDENT">Per student</option>
+            <option value="FIXED_TOTAL">Fixed total (per class)</option>
+          </select>
+        </div>
+
+        {pricingMode === "PER_STUDENT" && (
+          <div className="mb-4">
+            <label className="mb-2 block text-sm">
+              Monthly price per student (MAD)
+            </label>
+            <input
+              className="w-full rounded border p-2"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              inputMode="decimal"
+              placeholder="e.g. 300"
+            />
+          </div>
+        )}
+
+        {pricingMode === "FIXED_TOTAL" && (
+          <div className="mb-4">
+            <label className="mb-2 block text-sm">
+              Fixed total per class (MAD)
+            </label>
+            <input
+              className="w-full rounded border p-2"
+              value={fixedPrice}
+              onChange={(e) => setFixedPrice(e.target.value)}
+              inputMode="decimal"
+              placeholder="e.g. 1200"
+            />
+          </div>
+        )}
+
+        {/* <div className="mb-4">
+          <label className="mb-2 block text-sm">
+            Teacher fixed monthly pay (MAD) – optional
           </label>
           <input
-            type="number"
-            step="0.01"
-            className="w-full rounded-lg border px-3 py-2"
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
+            className="w-full rounded border p-2"
+            value={teacherPay}
+            onChange={(e) => setTeacherPay(e.target.value)}
+            inputMode="decimal"
+            placeholder="e.g. 800"
           />
-        </div>
-        <div className="grid sm:grid-cols-2 gap-4">
+        </div> */}
+
+        {/* <div className="grid sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-medium mb-1">
               Start (optional)
@@ -155,7 +238,7 @@ export default function AddClassModal({
               onChange={(e) => setEndAt(e.target.value)}
             />
           </div>
-        </div>
+        </div> */}
       </div>
       <div className="mt-6 flex justify-end gap-3">
         <button className="rounded-lg border px-4 py-2" onClick={onClose}>

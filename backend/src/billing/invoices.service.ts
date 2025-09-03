@@ -90,11 +90,9 @@ export class InvoicesService {
         continue;
       }
 
-      const existing = await this.prisma.invoice.findFirst({
-        where: {
-          studentId: s.id,
-          items: { some: { billedMonth: { gte: start, lt: end } } },
-        },
+      const number = `INV-${s.id}-${start.getUTCFullYear()}-${String(start.getUTCMonth() + 1).padStart(2, '0')}`;
+      const existing = await this.prisma.invoice.findUnique({
+        where: { number },
         select: { id: true, number: true },
       });
 
@@ -120,7 +118,6 @@ export class InvoicesService {
       }));
 
       const subtotal = items.reduce((t, i) => t + i.lineTotalCents, 0);
-      const number = `INV-${s.id}-${start.getUTCFullYear()}-${String(start.getUTCMonth() + 1).padStart(2, '0')}`;
 
       const created = await this.prisma.invoice.create({
         data: {
@@ -147,9 +144,13 @@ export class InvoicesService {
     const dueDate = new Date(start);
     dueDate.setUTCDate(dueDate.getUTCDate() + 10);
 
+    // Get student with classes and price overrides
     const student = await this.prisma.student.findUnique({
       where: { id: studentId },
-      include: { classes: true },
+      include: {
+        classes: true,
+        classPriceOverrides: true, // Include price overrides for this student
+      },
     });
 
     if (!student || student.classes.length === 0) {
@@ -157,6 +158,15 @@ export class InvoicesService {
       return;
     }
 
+    // Create a map of price overrides for easier lookup
+    const priceOverridesMap = new Map(
+      student.classPriceOverrides.map((override) => [
+        override.classId,
+        override.priceOverrideCents,
+      ]),
+    );
+
+    // Find existing invoice for this month
     let invoice = await this.prisma.invoice.findFirst({
       where: {
         studentId,
@@ -165,77 +175,168 @@ export class InvoicesService {
       include: { items: true },
     });
 
-    if (!invoice) {
-      const items = student.classes.map((c) => ({
-        classId: c.id,
-        billedMonth: start,
-        description: `${c.name} - ${start.toLocaleString('default', { month: 'long', year: 'numeric' })}`,
-        quantity: 1,
-        unitPriceCents: c.monthlyPriceCents ?? 0,
-        lineTotalCents: c.monthlyPriceCents ?? 0,
-        status: 'DUE' as const,
-        paidCents: 0,
-      }));
+    // Track which classes are already in the invoice
+    const existingClassIds = invoice
+      ? new Set(invoice.items.map((i) => i.classId))
+      : new Set();
 
-      const subtotal = items.reduce((t, i) => t + i.lineTotalCents, 0);
-      const number = `INV-${studentId}-${start.getUTCFullYear()}-${String(start.getUTCMonth() + 1).padStart(2, '0')}`;
+    // Get classes that need to be added to invoice
+    const classesToAdd = student.classes.filter(
+      (c) => !existingClassIds.has(c.id),
+    );
 
-      invoice = await this.prisma.invoice.create({
-        data: {
-          number,
-          studentId,
-          issueDate: new Date(),
-          dueDate,
-          status: InvoiceStatus.DUE,
-          subtotalCents: subtotal,
-          paidCents: 0,
-          items: { create: items },
-        },
-        include: { items: true },
-      });
+    if (!invoice && student.classes.length > 0) {
+      // Create a new invoice with all classes
+      const items = student.classes.map((c) => {
+        // Determine the correct price based on pricing mode and overrides
+        let lineTotalCents;
 
-      await this.updateStudentPaymentStatusForCurrentMonth(studentId);
-      return invoice;
-    }
+        // Check if there's a student-specific price override
+        if (priceOverridesMap.has(c.id)) {
+          lineTotalCents = priceOverridesMap.get(c.id);
+        }
+        // Otherwise use the class pricing model
+        else if (c.pricingMode === 'FIXED_TOTAL') {
+          // For fixed total pricing, divide the price among students (optional)
+          // You could get the student count and divide, or bill the full amount to one student
+          lineTotalCents = c.fixedMonthlyPriceCents ?? 0;
+        } else {
+          // Default per-student pricing
+          lineTotalCents = c.monthlyPriceCents ?? 0;
+        }
 
-    const existingIds = new Set(invoice.items.map((i) => i.classId));
-    const toAdd = student.classes.filter((c) => !existingIds.has(c.id));
-
-    if (toAdd.length > 0) {
-      await this.prisma.invoiceItem.createMany({
-        data: toAdd.map((c) => ({
-          invoiceId: invoice!.id,
+        return {
           classId: c.id,
           billedMonth: start,
           description: `${c.name} - ${start.toLocaleString('default', { month: 'long', year: 'numeric' })}`,
           quantity: 1,
-          unitPriceCents: c.monthlyPriceCents ?? 0,
-          lineTotalCents: c.monthlyPriceCents ?? 0,
+          unitPriceCents: lineTotalCents,
+          lineTotalCents: lineTotalCents,
           status: 'DUE' as const,
           paidCents: 0,
-        })),
+        };
       });
 
-      const items = await this.prisma.invoiceItem.findMany({
-        where: { invoiceId: invoice.id },
-      });
-      const subtotal = items.reduce((s, i) => s + i.lineTotalCents, 0);
-      const paid = items.reduce((s, i) => s + (i.paidCents ?? 0), 0);
-      const allPaid = items.every((i) => i.status === 'PAID');
+      const subtotal = items.reduce((t, i) => t + i.lineTotalCents, 0);
+      const number = `INV-${studentId}-${start.getUTCFullYear()}-${String(start.getUTCMonth() + 1).padStart(2, '0')}`;
 
-      invoice = await this.prisma.invoice.update({
-        where: { id: invoice.id },
-        data: {
-          subtotalCents: subtotal,
-          paidCents: paid,
-          status: allPaid
-            ? InvoiceStatus.PAID
-            : invoice.dueDate < new Date()
-              ? InvoiceStatus.OVERDUE
-              : InvoiceStatus.DUE,
-        },
+      // Check if invoice with this number already exists
+      invoice = await this.prisma.invoice.findUnique({
+        where: { number },
         include: { items: true },
       });
+
+      if (invoice) {
+        // Update existing invoice if needed
+        invoice = await this.prisma.invoice.update({
+          where: { number },
+          data: {
+            // Update fields as needed
+            subtotalCents: subtotal,
+          },
+          include: { items: true },
+        });
+      } else {
+        // Create new invoice
+        invoice = await this.prisma.invoice.create({
+          data: {
+            number,
+            studentId,
+            issueDate: new Date(),
+            dueDate,
+            status: InvoiceStatus.DUE,
+            subtotalCents: subtotal,
+            paidCents: 0,
+            items: { create: items },
+          },
+          include: { items: true },
+        });
+      }
+    } else if (classesToAdd.length > 0) {
+      // If we have an existing invoice but need to add new classes
+      // Create a new invoice for just the new classes
+      const newInvoiceNumber = `INV-${studentId}-${start.getUTCFullYear()}-${String(start.getUTCMonth() + 1).padStart(2, '0')}-ADD`;
+
+      // Check if we already have an "additional" invoice
+      let additionalInvoice = await this.prisma.invoice.findUnique({
+        where: { number: newInvoiceNumber },
+        include: { items: true },
+      });
+
+      // Create items for the new classes
+      const additionalItems = classesToAdd.map((c) => {
+        // Determine the correct price based on pricing mode and overrides
+        let lineTotalCents;
+
+        if (priceOverridesMap.has(c.id)) {
+          lineTotalCents = priceOverridesMap.get(c.id);
+        } else if (c.pricingMode === 'FIXED_TOTAL') {
+          lineTotalCents = c.fixedMonthlyPriceCents ?? 0;
+        } else {
+          lineTotalCents = c.monthlyPriceCents ?? 0;
+        }
+
+        return {
+          classId: c.id,
+          billedMonth: start,
+          description: `${c.name} - ${start.toLocaleString('default', { month: 'long', year: 'numeric' })} (Additional)`,
+          quantity: 1,
+          unitPriceCents: lineTotalCents,
+          lineTotalCents: lineTotalCents,
+          status: 'DUE' as const,
+          paidCents: 0,
+        };
+      });
+
+      const additionalSubtotal = additionalItems.reduce(
+        (t, i) => t + i.lineTotalCents,
+        0,
+      );
+
+      if (additionalInvoice) {
+        // Update existing additional invoice
+        const existingAdditionalClassIds = new Set(
+          additionalInvoice.items.map((i) => i.classId),
+        );
+        const newAdditionalItems = additionalItems.filter(
+          (item) => !existingAdditionalClassIds.has(item.classId),
+        );
+
+        if (newAdditionalItems.length > 0) {
+          await this.prisma.invoiceItem.createMany({
+            data: newAdditionalItems.map((item) => ({
+              // Use the non-null assertion operator here
+              invoiceId: additionalInvoice!.id,
+              ...item,
+            })),
+          });
+
+          additionalInvoice = await this.prisma.invoice.update({
+            where: { id: additionalInvoice.id },
+            data: {
+              subtotalCents:
+                additionalInvoice.subtotalCents +
+                newAdditionalItems.reduce((t, i) => t + i.lineTotalCents, 0),
+            },
+            include: { items: true },
+          });
+        }
+      } else if (additionalItems.length > 0) {
+        // Create new additional invoice
+        additionalInvoice = await this.prisma.invoice.create({
+          data: {
+            number: newInvoiceNumber,
+            studentId,
+            issueDate: new Date(),
+            dueDate,
+            status: InvoiceStatus.DUE,
+            subtotalCents: additionalSubtotal,
+            paidCents: 0,
+            items: { create: additionalItems },
+          },
+          include: { items: true },
+        });
+      }
     }
 
     await this.updateStudentPaymentStatusForCurrentMonth(studentId);

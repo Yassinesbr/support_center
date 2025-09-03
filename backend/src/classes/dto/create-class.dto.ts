@@ -6,8 +6,10 @@ import {
   isInt,
   Min,
   IsInt,
+  IsEnum,
 } from 'class-validator';
 import { Transform } from 'class-transformer';
+import { ClassPricingMode } from '@prisma/client';
 
 export class CreateClassDto {
   @IsNotEmpty()
@@ -40,4 +42,16 @@ export class CreateClassDto {
     return value; // already a number
   })
   monthlyPriceCents?: number;
+
+  @IsEnum(ClassPricingMode)
+  @IsOptional()
+  pricingMode?: ClassPricingMode;
+
+  @IsInt()
+  @IsOptional()
+  fixedMonthlyPriceCents?: number;
+
+  @IsInt()
+  @IsOptional()
+  teacherFixedMonthlyPayCents?: number;
 }

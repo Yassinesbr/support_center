@@ -94,4 +94,19 @@ export class ClassesController {
   removeTime(@Param('id') id: string, @Param('timeId') timeId: string) {
     return this.classesService.removeTime(id, timeId);
   }
+
+  @Post('classes/:classId/pricing')
+  async updateClassPricing(
+    @Param('classId') classId: string,
+    @Body()
+    data: {
+      pricingMode: 'PER_STUDENT' | 'FIXED_TOTAL';
+      monthlyPriceCents?: number;
+      fixedMonthlyPriceCents?: number;
+      teacherFixedMonthlyPayCents?: number;
+    },
+  ) {
+    // Update class pricing in your service
+    return this.classesService.updatePricing(classId, data);
+  }
 }

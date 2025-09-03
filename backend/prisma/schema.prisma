@@ -26,6 +26,11 @@ enum ItemStatus {
   WAIVED
 }
 
+enum ClassPricingMode {
+  PER_STUDENT
+  FIXED_TOTAL
+}
+
 model User {
   id        String  @id @default(uuid())
   email     String  @unique
@@ -58,6 +63,8 @@ model Student {
 
   // Billing
   invoices Invoice[]
+
+  classPriceOverrides StudentClassPriceOverride[] // back-relation
 }
 
 model Teacher {
@@ -86,10 +93,19 @@ model Class {
   endAt       DateTime?
   createdAt   DateTime    @default(now())
   classTimes  ClassTime[]
-  User        User?       @relation(fields: [userId], references: [id])
-  userId      String?
 
-  monthlyPriceCents Int @default(0)
+  User   User?   @relation(fields: [userId], references: [id])
+  userId String?
+
+  monthlyPriceCents           Int?
+  // New pricing fields
+  pricingMode                 ClassPricingMode @default(PER_STUDENT)
+  fixedMonthlyPriceCents      Int?
+  // Optional fixed teacher pay per month for this class
+  teacherFixedMonthlyPayCents Int?
+
+  // back-relation for per-student overrides
+  studentPriceOverrides StudentClassPriceOverride[]
 
   // Billing
   invoiceItems InvoiceItem[]
@@ -129,49 +145,61 @@ model Invoice {
 }
 
 model InvoiceItem {
-  id              String      @id @default(uuid())
-  invoiceId       String
-  classId         String
-  billedMonth     DateTime // first day of the billed month
-  description     String
-  quantity        Int        @default(1)
-  unitPriceCents  Int
-  lineTotalCents  Int
+  id             String   @id @default(uuid())
+  invoiceId      String
+  classId        String
+  billedMonth    DateTime // first day of the billed month
+  description    String
+  quantity       Int      @default(1)
+  unitPriceCents Int
+  lineTotalCents Int
 
   // NEW: per-item payment tracking
-  status          ItemStatus  @default(DUE)
-  paidCents       Int         @default(0)
-  paidAt          DateTime?
+  status    ItemStatus @default(DUE)
+  paidCents Int        @default(0)
+  paidAt    DateTime?
 
-  invoice         Invoice     @relation(fields: [invoiceId], references: [id])
-  class           Class       @relation(fields: [classId], references: [id])
-  allocations     PaymentAllocation[]
+  invoice     Invoice             @relation(fields: [invoiceId], references: [id])
+  class       Class               @relation(fields: [classId], references: [id])
+  allocations PaymentAllocation[]
 
   @@unique([invoiceId, classId, billedMonth])
   @@index([classId, billedMonth])
 }
 
 model Payment {
-  id           String   @id @default(uuid())
-  invoiceId    String
-  amountCents  Int
-  method       String   @default("manual")
-  paidAt       DateTime @default(now())
-  reference    String?
+  id          String   @id @default(uuid())
+  invoiceId   String
+  amountCents Int
+  method      String   @default("manual")
+  paidAt      DateTime @default(now())
+  reference   String?
 
-  invoice      Invoice  @relation(fields: [invoiceId], references: [id])
-  allocations  PaymentAllocation[]
+  invoice     Invoice             @relation(fields: [invoiceId], references: [id])
+  allocations PaymentAllocation[]
 }
 
 // NEW: PaymentAllocation ties a payment to a specific InvoiceItem
 model PaymentAllocation {
-  id            String      @id @default(uuid())
+  id            String @id @default(uuid())
   paymentId     String
   invoiceItemId String
   amountCents   Int
 
-  payment       Payment     @relation(fields: [paymentId], references: [id])
-  item          InvoiceItem @relation(fields: [invoiceItemId], references: [id])
+  payment Payment     @relation(fields: [paymentId], references: [id])
+  item    InvoiceItem @relation(fields: [invoiceItemId], references: [id])
 
   @@index([invoiceItemId])
+}
+
+// Allows per-student price override for a specific class without changing the M2M relation
+model StudentClassPriceOverride {
+  studentId          String
+  classId            String
+  priceOverrideCents Int
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  class   Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  @@id([studentId, classId])
 }

@@ -216,16 +216,46 @@ export default function ClassDetailsPage() {
       {/* Billing section */}
       <section className="mt-8 rounded-xl bg-white dark:bg-gray-900 p-4 shadow-sm border border-gray-200/60 dark:border-gray-800">
         <h3 className="text-lg font-semibold mb-4">Billing</h3>
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <strong>Price per student:</strong>{" "}
-            {formatCents(data.monthlyPriceCents)}
-          </div>
-          <div>
-            <strong>Total monthly income:</strong>{" "}
-            {formatCents(data.totalMonthlyIncomeCents)}
-          </div>
-        </div>
+        {data.pricingMode === "PER_STUDENT" ? (
+          <>
+            <p className="mb-2">
+              <strong>Price per student:</strong>{" "}
+              {formatCents(data.monthlyPriceCents)}
+            </p>
+            <p className="mb-2">
+              <strong>Number of students:</strong> {data.students?.length ?? 0}
+            </p>
+            <p className="mb-2">
+              <strong>Total (price × students):</strong>{" "}
+              {formatCents(
+                (data.monthlyPriceCents ?? 0) * (data.students?.length ?? 0)
+              )}
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="mb-2">
+              <strong>Fixed class price:</strong>{" "}
+              {formatCents((data as any).fixedMonthlyPriceCents)}
+            </p>
+            <p className="mb-2">
+              <strong>Number of students:</strong>{" "}
+              <span className="text-gray-500">
+                {data.students?.length ?? 0} (not relevant for total)
+              </span>
+            </p>
+            <p className="mb-2">
+              <strong>Total:</strong>{" "}
+              {formatCents((data as any).fixedMonthlyPriceCents)}
+            </p>
+          </>
+        )}
+        {(data as any).teacherFixedMonthlyPayCents != null && (
+          <p className="mb-2">
+            <strong>Teacher fixed monthly pay:</strong>{" "}
+            {formatCents((data as any).teacherFixedMonthlyPayCents)}
+          </p>
+        )}
       </section>
     </>
   );

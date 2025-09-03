@@ -4,8 +4,10 @@ import {
   IsDateString,
   IsInt,
   Min,
+  IsEnum,
 } from 'class-validator';
 import { Transform } from 'class-transformer';
+import { ClassPricingMode } from '@prisma/client';
 
 export class UpdateClassDto {
   @IsOptional() @IsString() name?: string;
@@ -23,4 +25,16 @@ export class UpdateClassDto {
     return value;
   })
   monthlyPriceCents?: number;
+
+  @IsEnum(ClassPricingMode)
+  @IsOptional()
+  pricingMode?: ClassPricingMode;
+
+  @IsInt()
+  @IsOptional()
+  fixedMonthlyPriceCents?: number;
+
+  @IsInt()
+  @IsOptional()
+  teacherFixedMonthlyPayCents?: number;
 }

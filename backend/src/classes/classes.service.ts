@@ -36,10 +36,13 @@ export class ClassesService {
     if (!klass) throw new NotFoundException('Class not found');
 
     // compute total monthly income: price per student * number of students
-    const totalMonthlyIncomeCents =
-      (klass.monthlyPriceCents ?? 0) * (klass.students?.length ?? 0);
+    // Update to consider FIXED_TOTAL
+    const monthlyIncome =
+      klass.pricingMode === 'FIXED_TOTAL'
+        ? (klass.fixedMonthlyPriceCents ?? 0)
+        : (klass.monthlyPriceCents ?? 0) * (klass.students?.length ?? 0);
 
-    return { ...klass, totalMonthlyIncomeCents };
+    return { ...klass, totalMonthlyIncomeCents: monthlyIncome };
   }
 
   async create(data: CreateClassDto) {
@@ -170,6 +173,28 @@ export class ClassesService {
     if (!time || time.classId !== classId)
       throw new NotFoundException('Time not found');
     return this.prisma.classTime.delete({ where: { id: timeId } });
+  }
+
+  async updatePricing(
+    classId: string,
+    data: {
+      pricingMode: 'PER_STUDENT' | 'FIXED_TOTAL';
+      monthlyPriceCents?: number;
+      fixedMonthlyPriceCents?: number;
+      teacherFixedMonthlyPayCents?: number;
+    },
+  ) {
+    await this.ensureClass(classId);
+
+    return this.prisma.class.update({
+      where: { id: classId },
+      data: {
+        pricingMode: data.pricingMode,
+        monthlyPriceCents: data.monthlyPriceCents,
+        fixedMonthlyPriceCents: data.fixedMonthlyPriceCents,
+        teacherFixedMonthlyPayCents: data.teacherFixedMonthlyPayCents,
+      },
+    });
   }
 
   private async ensureClass(classId: string) {

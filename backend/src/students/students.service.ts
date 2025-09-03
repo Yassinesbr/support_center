@@ -231,4 +231,27 @@ export class StudentsService {
 
     return updatedStudent;
   }
+
+  async setClassPriceOverride(
+    studentId: string,
+    classId: string,
+    priceOverrideCents?: number,
+  ) {
+    if (priceOverrideCents === undefined || priceOverrideCents === null) {
+      await this.prisma.studentClassPriceOverride
+        .delete({
+          where: { studentId_classId: { studentId, classId } },
+        })
+        .catch(() => undefined);
+    } else {
+      await this.prisma.studentClassPriceOverride.upsert({
+        where: { studentId_classId: { studentId, classId } },
+        create: { studentId, classId, priceOverrideCents },
+        update: { priceOverrideCents },
+      });
+    }
+    // Refresh upcoming invoice for accuracy
+    await this.invoices.ensureUpcomingInvoiceForStudent(studentId);
+    return { ok: true };
+  }
 }

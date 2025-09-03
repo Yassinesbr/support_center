@@ -180,7 +180,7 @@ export default function AddStudentModal({
           </div>
 
           {/* Optional credentials */}
-          <div>
+          {/* <div>
             <label className="block text-xs font-medium mb-1">
               Password (optional)
             </label>
@@ -191,6 +191,17 @@ export default function AddStudentModal({
               onChange={onChange}
               className="w-full rounded-lg border px-3 py-2"
               placeholder="Temp password"
+            />
+          </div> */}
+
+          <div>
+            <label className="block text-xs font-medium mb-1">Phone</label>
+            <input
+              name="phone"
+              value={form.phone}
+              onChange={onChange}
+              className="w-full rounded-lg border px-3 py-2"
+              placeholder="0600000001"
             />
           </div>
 
@@ -214,17 +225,6 @@ export default function AddStudentModal({
               onChange={onChange}
               className="w-full rounded-lg border px-3 py-2"
               placeholder="1 Center St"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium mb-1">Phone</label>
-            <input
-              name="phone"
-              value={form.phone}
-              onChange={onChange}
-              className="w-full rounded-lg border px-3 py-2"
-              placeholder="0600000001"
             />
           </div>
 

@@ -15,6 +15,10 @@ import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { SetStudentClassesDto } from './dto/set-student-classes.dto';
 
+class SetPriceOverrideDto {
+  priceOverrideCents?: number; // omit or null to clear
+}
+
 @Controller('students')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class StudentsController {
@@ -74,5 +78,30 @@ export class StudentsController {
   @Roles('admin')
   update(@Param('id') id: string, @Body() body: any) {
     return this.studentsService.update(id, body);
+  }
+
+  @Put(':studentId/classes/:classId/price-override')
+  async setClassPriceOverride(
+    @Param('studentId') studentId: string,
+    @Param('classId') classId: string,
+    @Body() dto: SetPriceOverrideDto,
+  ) {
+    return this.studentsService.setClassPriceOverride(
+      studentId,
+      classId,
+      dto.priceOverrideCents,
+    );
+  }
+
+  @Delete(':studentId/classes/:classId/price-override')
+  async clearClassPriceOverride(
+    @Param('studentId') studentId: string,
+    @Param('classId') classId: string,
+  ) {
+    return this.studentsService.setClassPriceOverride(
+      studentId,
+      classId,
+      undefined,
+    );
   }
 }
