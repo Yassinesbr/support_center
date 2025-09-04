@@ -19,6 +19,7 @@ export default function SignInForm() {
     e.preventDefault();
     setError("");
     try {
+      console.log("hehe", import.meta.env.DATABASE_URL);
       const res = await axios.post("/auth/login", { email, password });
       localStorage.setItem("token", res.data.access_token);
       navigate("/");
