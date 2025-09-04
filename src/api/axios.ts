@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "http://localhost:3000",
+  baseURL: import.meta.env.DATABASE_URL || "http://localhost:3000",
   withCredentials: true, // Set to true if using cookies/session
 });
 
