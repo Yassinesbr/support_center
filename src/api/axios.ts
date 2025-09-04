@@ -2,7 +2,7 @@ import axios from "axios";
 
 const api = axios.create({
   baseURL:
-    import.meta.env.STORAGE_PRISMA_DATABASE_URL || "http://localhost:3000",
+    import.meta.env.STORAGE_PRISMA_DATABASE_URL || import.meta.env.DATABASE_URL,
   withCredentials: true, // Set to true if using cookies/session
 });
 
