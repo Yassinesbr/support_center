@@ -22,7 +22,7 @@ export default function SignInForm() {
       console.log("Logg:: DATABASE_URL", import.meta.env.VITE_DATABASE_URL);
       console.log(
         "Logg:: STORAGE_PRISMA_DATABASE_URL",
-        import.meta.env.STORAGE_PRISMA_DATABASE_URL
+        import.meta.env.VITE_STORAGE_PRISMA_DATABASE_URL
       );
       const res = await axios.post("/auth/login", { email, password });
       localStorage.setItem("token", res.data.access_token);
